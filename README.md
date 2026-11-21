@@ -33,7 +33,8 @@ Copy `Torii.Api/appsettings.example.json` to `Torii.Api/appsettings.json`
 ## Database
 
 Migrations live in `Torii.Api/Migrations` (`InitialCreate`, `AddUserRole`,
-`AddedAccountType`, `AddTicket`, `AddedCustomers`, `AddTicketChannels`):
+`AddedAccountType`, `AddTicket`, `AddedCustomers`, `AddTicketChannels`, `AddedTicketTitle`,
+`AddTicketEdges`):
 
 ```bash
 cd Torii.Api
@@ -121,6 +122,20 @@ Deleting a customer is a soft delete (`IsDeleted`, `DeletedAt`, `DeletedById`); 
 | POST   | `/api/admin/customers/{id}/members`          | Add a member `{ userId }` (409 if already a member) |
 | DELETE | `/api/admin/customers/{id}/members/{userId}` | Remove a member                      |
 | GET    | `/api/admin/users?search=`                   | User search (20 max)                 |
+| GET    | `/api/admin/ticket-edges`                    | Ticket edges (routing configuration) |
+| POST   | `/api/admin/ticket-edges`                    | Create `{ sourceCustomerId, targetCustomerId }` (409 if it exists) |
+| PUT    | `/api/admin/ticket-edges/{id}`               | Update `{ sourceCustomerId, targetCustomerId, isActive }` |
+| DELETE | `/api/admin/ticket-edges/{id}`               | Delete (soft delete)                 |
+
+### Ticket configuration: edges
+
+A `TicketEdge` states that a **source** customer may send tickets to a **target**
+customer. Edges are **directed** (A → B does not allow B → A) and can be disabled
+without being deleted (`IsActive`). Database rules: one live edge per (source, target)
+pair (unique index filtered on `IsDeleted = false`), no self-edge (check constraint),
+and customers referenced by an edge cannot be hard-deleted. Edges whose customer was
+soft-deleted are hidden. `TicketEdgeManager.CanSendAsync(source, target)` is the check to
+use when creating tickets.
 
 ## Structure
 

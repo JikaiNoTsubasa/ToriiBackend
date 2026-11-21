@@ -14,6 +14,7 @@ public class ToriiDbContext(DbContextOptions<ToriiDbContext> options) : DbContex
     public DbSet<TicketChannel> TicketChannels => Set<TicketChannel>();
     public DbSet<ChannelParticipant> ChannelParticipants => Set<ChannelParticipant>();
     public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<TicketEdge> TicketEdges => Set<TicketEdge>();
 
     /// <summary>Ticket number sequence (TI000001, TI000002…).</summary>
     public const string TicketNumberSequence = "TicketNumbers";
@@ -87,6 +88,27 @@ public class ToriiDbContext(DbContextOptions<ToriiDbContext> options) : DbContex
             entity.HasOne(p => p.Customer)
                   .WithMany(c => c.ChannelParticipations)
                   .HasForeignKey(p => p.CustomerId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TicketEdge>(entity =>
+        {
+            entity.ToTable(t => t.HasCheckConstraint(
+                "CK_TicketEdges_DifferentCustomers", "\"SourceCustomerId\" <> \"TargetCustomerId\""));
+
+            // One live edge per direction; soft-deleted edges do not block re-creation.
+            entity.HasIndex(e => new { e.SourceCustomerId, e.TargetCustomerId })
+                  .IsUnique()
+                  .HasFilter("\"IsDeleted\" = false");
+            entity.HasIndex(e => e.TargetCustomerId);
+
+            entity.HasOne(e => e.SourceCustomer)
+                  .WithMany()
+                  .HasForeignKey(e => e.SourceCustomerId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.TargetCustomer)
+                  .WithMany()
+                  .HasForeignKey(e => e.TargetCustomerId)
                   .OnDelete(DeleteBehavior.Restrict);
         });
 

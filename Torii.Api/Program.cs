@@ -29,6 +29,7 @@ builder.Services.AddScoped<AdminSeeder>();
 builder.Services.AddScoped<TicketManager>();
 builder.Services.AddScoped<CustomerManager>();
 builder.Services.AddScoped<UserManager>();
+builder.Services.AddScoped<TicketEdgeManager>();
 
 // --- JWT Bearer authentication ---
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

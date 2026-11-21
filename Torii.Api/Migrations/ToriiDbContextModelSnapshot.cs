@@ -135,6 +135,10 @@ namespace Torii.Api.Migrations
                         .HasColumnType("character varying(16)")
                         .HasDefaultValueSql("next_ticket_number()");
 
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.HasKey("Number");
 
                     b.ToTable("Tickets");
@@ -181,6 +185,58 @@ namespace Torii.Api.Migrations
                     b.HasIndex("TicketNumber");
 
                     b.ToTable("TicketChannels");
+                });
+
+            modelBuilder.Entity("Torii.Api.Models.TicketEdge", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("CreatedById")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("DeletedById")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<long>("SourceCustomerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("TargetCustomerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("UpdatedById")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TargetCustomerId");
+
+                    b.HasIndex("SourceCustomerId", "TargetCustomerId")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.ToTable("TicketEdges", t =>
+                        {
+                            t.HasCheckConstraint("CK_TicketEdges_DifferentCustomers", "\"SourceCustomerId\" <> \"TargetCustomerId\"");
+                        });
                 });
 
             modelBuilder.Entity("Torii.Api.Models.User", b =>
@@ -305,6 +361,25 @@ namespace Torii.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Ticket");
+                });
+
+            modelBuilder.Entity("Torii.Api.Models.TicketEdge", b =>
+                {
+                    b.HasOne("Torii.Api.Models.Customer", "SourceCustomer")
+                        .WithMany()
+                        .HasForeignKey("SourceCustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Torii.Api.Models.Customer", "TargetCustomer")
+                        .WithMany()
+                        .HasForeignKey("TargetCustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("SourceCustomer");
+
+                    b.Navigation("TargetCustomer");
                 });
 
             modelBuilder.Entity("Torii.Api.Models.Customer", b =>
