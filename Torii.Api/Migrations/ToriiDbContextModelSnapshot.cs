@@ -478,6 +478,12 @@ namespace Torii.Api.Migrations
                         .HasColumnType("text")
                         .HasDefaultValue("APPLICATION");
 
+                    b.Property<string>("AvatarContentType")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AvatarStorageKey")
+                        .HasColumnType("text");
+
                     b.Property<string>("AvatarUrl")
                         .IsRequired()
                         .HasColumnType("text");

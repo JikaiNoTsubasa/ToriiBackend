@@ -35,7 +35,7 @@ Copy `Torii.Api/appsettings.example.json` to `Torii.Api/appsettings.json`
 Migrations live in `Torii.Api/Migrations` (`InitialCreate`, `AddUserRole`,
 `AddedAccountType`, `AddTicket`, `AddedCustomers`, `AddTicketChannels`, `AddedTicketTitle`,
 `AddTicketEdges`, `AddTicketMessages`, `ReleaseDeletedUserEmails`, `AddTicketCreator`,
-`AddChannelStatus`, `AddMessageForward`, `AddChannelFilesAndActivities`):
+`AddChannelStatus`, `AddMessageForward`, `AddChannelFilesAndActivities`, `AddUserAvatar`):
 
 ```bash
 cd Torii.Api
@@ -92,6 +92,26 @@ curl -X POST http://localhost:5080/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"a@b.co","password":"password123","displayName":"Alice"}'
 ```
+
+## Profile
+
+Endpoints of the signed-in user (`Controllers/ProfileController.cs`, `/api/profile` prefix, **Bearer**):
+
+| Method | Route                   | Description |
+|--------|-------------------------|-------------|
+| GET    | `/`                     | Own profile (identity, role, customers, avatar) |
+| PUT    | `/`                     | Update `{ displayName }` |
+| PUT    | `/email`                | Change `{ newEmail, currentPassword }` (400 wrong password, 409 taken) |
+| PUT    | `/password`             | Change `{ currentPassword, newPassword }`: every session is revoked, a fresh `AuthResponse` is returned |
+| POST   | `/avatar`               | Upload an avatar (multipart `file`; PNG, JPEG, WebP or GIF checked from the file signature, 5 MB max) |
+| DELETE | `/avatar`               | Back to the default avatar |
+| POST   | `/sessions/revoke-all`  | Sign out of all devices |
+
+A wrong current password answers **400** (not 401, which the client treats as an expired
+session). Uploaded avatars are stored with the file storage and served **anonymously** by
+`GET /api/users/{id}/avatar` (an `<img>` cannot send the Bearer token); `User.AvatarUrl`
+becomes `/api/users/{id}/avatar?v={version}`, the version changing on every upload so the
+response can be cached for 30 days.
 
 ## Tickets
 

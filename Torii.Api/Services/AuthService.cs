@@ -72,6 +72,40 @@ public class AuthService(ToriiDbContext db, ITokenService tokens) : IAuthService
             : UserDto.From(user);
     }
 
+    public async Task<AuthResponse> ChangePasswordAsync(long userId, ChangePasswordRequest request, CancellationToken ct = default)
+    {
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId && u.IsActive && !u.IsDeleted, ct)
+                   ?? throw NotFoundException.For("User", userId);
+
+        // 400, not 401: the client would take a 401 for an expired session.
+        if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
+            throw new ValidationException(new Dictionary<string, string[]>
+            {
+                ["currentPassword"] = ["The current password is incorrect."],
+            });
+        if (request.CurrentPassword == request.NewPassword)
+            throw new ValidationException(new Dictionary<string, string[]>
+            {
+                ["newPassword"] = ["The new password must differ from the current one."],
+            });
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+        user.UpdatedById = user.Id;
+        await RevokeAllSessionsAsync(userId, ct);
+        await db.SaveChangesAsync(ct);
+
+        return await IssueTokensAsync(user, ct);
+    }
+
+    public async Task RevokeAllSessionsAsync(long userId, CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+        await db.RefreshTokens
+            .Where(t => t.UserId == userId && t.RevokedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now), ct);
+    }
+
     private async Task<AuthResponse> IssueTokensAsync(User user, CancellationToken ct)
     {
         var (accessToken, accessExpiry) = tokens.CreateAccessToken(user);

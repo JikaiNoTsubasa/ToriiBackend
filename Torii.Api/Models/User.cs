@@ -26,7 +26,18 @@ public class User: Entity
     /// <summary>Customers the user is a member of (N-N through CustomerMembers).</summary>
     public ICollection<Customer> Customers { get; set; } = [];
 
-    public string AvatarUrl { get; set; } = "https://www.gravatar.com/avatar/?d=mp&s=64";
+    /// <summary>Generic avatar used until the user uploads their own.</summary>
+    public const string DefaultAvatarUrl = "https://www.gravatar.com/avatar/?d=mp&s=64";
+
+    /// <summary>
+    /// Avatar shown everywhere: <see cref="DefaultAvatarUrl"/>, or the uploaded avatar served by
+    /// <c>/api/users/{id}/avatar?v={version}</c> (the version busts browser caches on change).
+    /// </summary>
+    public string AvatarUrl { get; set; } = DefaultAvatarUrl;
+
+    /// <summary>Storage key of the uploaded avatar (null = default avatar).</summary>
+    public string? AvatarStorageKey { get; set; }
+    public string? AvatarContentType { get; set; }
 
     public AccountType AccountType = AccountType.APPLICATION;
 }
