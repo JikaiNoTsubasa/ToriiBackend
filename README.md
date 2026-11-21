@@ -211,6 +211,15 @@ Message content is HTML from the rich text editor: Angular sanitizes it when ren
 with `[innerHTML]`, but sanitize it on the backend before any use outside the app
 (emails, exports).
 
+## Dashboard
+
+`GET /api/dashboard` (`TicketManager.GetDashboardAsync`) computes the home dashboard over the
+channels the user can see: KPIs (open conversations, conversations awaiting the user's side —
+latest message from the other side —, tickets created in 7 days, channels resolved / closed in
+30 days, messages in 14 days), channels by status, open tickets by priority, messages per UTC
+day (14 days, zeros included), the conversations waiting for an answer (most urgent, then
+longest waiting first) and the latest tickets.
+
 ## Notifications
 
 In-app notifications (`Notifications` table, `NotificationManager`). A message posted or
