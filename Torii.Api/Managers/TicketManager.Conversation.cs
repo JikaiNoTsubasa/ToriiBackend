@@ -30,6 +30,8 @@ public partial class TicketManager
                          {
                              t.Number,
                              t.Title,
+                             t.Type,
+                             t.Priority,
                              CreatedBy = t.CreatedBy == null
                                  ? null
                                  : new UserRefDto(t.CreatedBy.Id, t.CreatedBy.DisplayName, t.CreatedBy.AvatarUrl),
@@ -79,6 +81,10 @@ public partial class TicketManager
                     a.CreatedAt,
                     a.FromStatus,
                     a.ToStatus,
+                    a.FromType,
+                    a.ToType,
+                    a.FromPriority,
+                    a.ToPriority,
                     a.ChannelFile == null
                         ? null
                         : new FileRefDto(
@@ -122,6 +128,8 @@ public partial class TicketManager
         return new TicketDetailDto(
             header.Number,
             header.Title,
+            header.Type,
+            header.Priority,
             header.CreatedBy,
             header.CreatedAt,
             channels

@@ -251,7 +251,15 @@ namespace Torii.Api.Migrations
                     b.Property<long?>("CreatedById")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Type")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -279,13 +287,25 @@ namespace Torii.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("FromPriority")
+                        .HasColumnType("text");
+
                     b.Property<string>("FromStatus")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FromType")
                         .HasColumnType("text");
 
                     b.Property<long>("TicketChannelId")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("ToPriority")
+                        .HasColumnType("text");
+
                     b.Property<string>("ToStatus")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ToType")
                         .HasColumnType("text");
 
                     b.Property<string>("Type")

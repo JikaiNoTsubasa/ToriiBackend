@@ -14,6 +14,18 @@ public enum TicketActivityType
 
     /// <summary>A file was forwarded into the channel from another channel of the ticket.</summary>
     FILE_FORWARDED,
+
+    /// <summary>
+    /// Ticket type changed from <see cref="TicketActivity.FromType"/> to <see cref="TicketActivity.ToType"/>
+    /// (ticket-wide: recorded in every channel of the ticket).
+    /// </summary>
+    TYPE_CHANGED,
+
+    /// <summary>
+    /// Ticket priority changed from <see cref="TicketActivity.FromPriority"/> to
+    /// <see cref="TicketActivity.ToPriority"/> (ticket-wide: recorded in every channel of the ticket).
+    /// </summary>
+    PRIORITY_CHANGED,
 }
 
 /// <summary>
@@ -39,6 +51,18 @@ public class TicketActivity
 
     /// <summary>STATUS_CHANGED: new status.</summary>
     public TicketStatus? ToStatus { get; set; }
+
+    /// <summary>TYPE_CHANGED: previous type.</summary>
+    public TicketType? FromType { get; set; }
+
+    /// <summary>TYPE_CHANGED: new type.</summary>
+    public TicketType? ToType { get; set; }
+
+    /// <summary>PRIORITY_CHANGED: previous priority.</summary>
+    public TicketPriority? FromPriority { get; set; }
+
+    /// <summary>PRIORITY_CHANGED: new priority.</summary>
+    public TicketPriority? ToPriority { get; set; }
 
     /// <summary>FILE_UPLOADED / FILE_FORWARDED: the file link concerned.</summary>
     public long? ChannelFileId { get; set; }

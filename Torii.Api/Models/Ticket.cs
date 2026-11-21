@@ -11,6 +11,12 @@ public class Ticket
     public string Title { get; set; } = null!;
     public ICollection<TicketChannel>? Channels { get; set; }
 
+    /// <summary>Kind of ticket (shared by all its channels).</summary>
+    public TicketType Type { get; set; } = TicketType.REQUEST;
+
+    /// <summary>Urgency (shared by all its channels).</summary>
+    public TicketPriority Priority { get; set; } = TicketPriority.MEDIUM;
+
     /// <summary>User who created the ticket (null only for legacy rows without any message).</summary>
     public long? CreatedById { get; set; }
     public User? CreatedBy { get; set; }

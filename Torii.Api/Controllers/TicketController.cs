@@ -17,19 +17,30 @@ public class TicketController(TicketManager tickets) : ToriController
     /// One page of the tickets visible to the signed-in user (through their customers), newest
     /// first. <c>search</c> matches the number or the title; <c>status</c> (repeatable, e.g.
     /// <c>?status=NEW&amp;status=IN_PROGRESS</c>) keeps tickets where at least one of the user's
-    /// channels has one of them — absent = any status. <c>pageSize</c> is capped at 100.
+    /// channels has one of them; <c>type</c> / <c>priority</c> (repeatable) keep tickets of one of
+    /// them. An absent filter means "any". <c>pageSize</c> is capped at 100.
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<PagedResult<TicketListItemDto>>> List(
         [FromQuery] string? search,
         [FromQuery(Name = "status")] TicketStatus[]? statuses,
+        [FromQuery(Name = "type")] TicketType[]? types,
+        [FromQuery(Name = "priority")] TicketPriority[]? priorities,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = TicketManager.DefaultPageSize,
         CancellationToken ct = default)
         => Ok(await tickets.ListVisibleAsync(
             CurrentUserId,
-            new TicketListQuery(search, statuses is { Length: > 0 } ? statuses : null, page, pageSize),
+            new TicketListQuery(search, NullIfEmpty(statuses), NullIfEmpty(types), NullIfEmpty(priorities), page, pageSize),
             ct));
+
+    /// <summary>Changes the type and priority of the ticket (participants only; 404 otherwise).</summary>
+    [HttpPut("{number}/classification")]
+    public async Task<ActionResult<TicketListItemDto>> UpdateClassification(
+        string number, UpdateTicketClassificationRequest request, CancellationToken ct)
+        => Ok(await tickets.UpdateClassificationAsync(number, request.Type!.Value, request.Priority!.Value, CurrentUserId, ct));
+
+    private static T[]? NullIfEmpty<T>(T[]? values) => values is { Length: > 0 } ? values : null;
 
     /// <summary>
     /// Customers the signed-in user may send tickets from, each with its allowed

@@ -7,6 +7,8 @@ namespace Torii.Api.Dtos;
 public record TicketListItemDto(
     string Number,
     string Title,
+    TicketType Type,
+    TicketPriority Priority,
     UserRefDto? CreatedBy,
     DateTime CreatedAt,
     IReadOnlyList<TicketChannelDto> Channels);
@@ -14,9 +16,19 @@ public record TicketListItemDto(
 /// <summary>
 /// Ticket list query: <see cref="Search"/> matches the number or the title (case-insensitive);
 /// <see cref="Statuses"/> keeps tickets where at least one of the user's channels has one of
-/// them (null = any status).
+/// them (null = any status); <see cref="Types"/> / <see cref="Priorities"/> keep tickets of one
+/// of them (null = any).
 /// </summary>
-public record TicketListQuery(string? Search, IReadOnlyCollection<TicketStatus>? Statuses, int Page, int PageSize);
+public record TicketListQuery(
+    string? Search,
+    IReadOnlyCollection<TicketStatus>? Statuses,
+    IReadOnlyCollection<TicketType>? Types,
+    IReadOnlyCollection<TicketPriority>? Priorities,
+    int Page,
+    int PageSize);
+
+/// <summary>Type / priority change of a ticket (participants of any of its channels).</summary>
+public record UpdateTicketClassificationRequest([Required] TicketType? Type, [Required] TicketPriority? Priority);
 
 /// <summary>Minimal user reference for display (name + avatar).</summary>
 public record UserRefDto(long Id, string DisplayName, string AvatarUrl);
@@ -31,6 +43,8 @@ public record TicketChannelDto(
 public record TicketDetailDto(
     string Number,
     string Title,
+    TicketType Type,
+    TicketPriority Priority,
     UserRefDto? CreatedBy,
     DateTime CreatedAt,
     IReadOnlyList<TicketChannelDetailDto> Channels);
@@ -69,6 +83,10 @@ public record TicketActivityDto(
     DateTime CreatedAt,
     TicketStatus? FromStatus,
     TicketStatus? ToStatus,
+    TicketType? FromType,
+    TicketType? ToType,
+    TicketPriority? FromPriority,
+    TicketPriority? ToPriority,
     FileRefDto? File);
 
 /// <summary>
@@ -156,4 +174,6 @@ public record CreateTicketRequest(
     [Range(1, long.MaxValue)] long SourceCustomerId,
     [Range(1, long.MaxValue)] long TargetCustomerId,
     [Required, MaxLength(200)] string Title,
-    [Required, MaxLength(50_000)] string Content);
+    [Required, MaxLength(50_000)] string Content,
+    TicketType Type = TicketType.REQUEST,
+    TicketPriority Priority = TicketPriority.MEDIUM);

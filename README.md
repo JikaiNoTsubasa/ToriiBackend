@@ -35,7 +35,8 @@ Copy `Torii.Api/appsettings.example.json` to `Torii.Api/appsettings.json`
 Migrations live in `Torii.Api/Migrations` (`InitialCreate`, `AddUserRole`,
 `AddedAccountType`, `AddTicket`, `AddedCustomers`, `AddTicketChannels`, `AddedTicketTitle`,
 `AddTicketEdges`, `AddTicketMessages`, `ReleaseDeletedUserEmails`, `AddTicketCreator`,
-`AddChannelStatus`, `AddMessageForward`, `AddChannelFilesAndActivities`, `AddUserAvatar`):
+`AddChannelStatus`, `AddMessageForward`, `AddChannelFilesAndActivities`, `AddUserAvatar`,
+`AddTicketTypeAndPriority`):
 
 ```bash
 cd Torii.Api
@@ -141,11 +142,17 @@ response can be cached for 30 days.
 | POST   | `/api/tickets/{number}/channels/{channelId}/messages/{messageId}/forward` | Forward a message `{ targetChannelId }` or `{ sourceCustomerId, targetCustomerId }` (+ optional `comment`) | **Bearer** |
 | POST   | `/api/tickets/{number}/channels` | Open a channel `{ sourceCustomerId, targetCustomerId, content }` (edge required; 409 if these customers are already linked) | **Bearer** |
 
+Each ticket has a **type** (`BUG`, `INCIDENT`, `FEATURE_REQUEST`, `IMPROVEMENT`, `REQUEST`,
+`QUESTION`; default `REQUEST`) and a **priority** (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`; default
+`MEDIUM`), shared by all its channels: chosen on creation, changed by any participant with
+`PUT /api/tickets/{number}/classification` `{ type, priority }`.
+
 The list is filtered and paginated server-side and returns a `PagedResult`
 (`{ items, page, pageSize, totalCount, totalPages }`): `search` matches the number or the
 title (case-insensitive `ILIKE`, wildcards escaped); `status` (repeatable,
 `?status=NEW&status=IN_PROGRESS`) keeps tickets where at least one of the user's channels has
-one of them — absent = any status; `page` is 1-based, `pageSize` defaults to 25 (max 100).
+one of them; `type` / `priority` (repeatable too) keep tickets of one of them — an absent
+filter means "any"; `page` is 1-based, `pageSize` defaults to 25 (max 100).
 
 The list and the details only return the channels the user takes part in: the same ticket
 looks different depending on who reads it (e.g. a channel opened between Globex and a
@@ -155,7 +162,8 @@ customer in the channel, `isMine` and `isOwnSide` (written by the user's side).
 ### Activity feed & files
 
 Each channel has an activity feed (`TicketActivities`): `CHANNEL_OPENED`, `STATUS_CHANGED`
-(from → to), `FILE_UPLOADED`, `FILE_FORWARDED` — with the actor and the date. The details
+(from → to), `FILE_UPLOADED`, `FILE_FORWARDED`, `TYPE_CHANGED` / `PRIORITY_CHANGED` (from → to;
+ticket-wide, so logged in every channel of the ticket) — with the actor and the date. The details
 return it next to the messages; the UI merges both into one chronological feed. The
 `AddChannelFilesAndActivities` migration backfills the opening of existing channels and their
 last known status change.
