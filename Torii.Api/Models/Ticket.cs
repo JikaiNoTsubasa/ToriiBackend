@@ -10,4 +10,10 @@ public class Ticket
     public string Number { get; private set; } = null!;
     public string Title { get; set; } = null!;
     public ICollection<TicketChannel>? Channels { get; set; }
+
+    /// <summary>User who created the ticket (null only for legacy rows without any message).</summary>
+    public long? CreatedById { get; set; }
+    public User? CreatedBy { get; set; }
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

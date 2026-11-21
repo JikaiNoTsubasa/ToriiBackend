@@ -29,4 +29,13 @@ public class TicketController(TicketManager tickets) : ToriController
     [HttpPost]
     public async Task<ActionResult<TicketListItemDto>> Create(CreateTicketRequest request, CancellationToken ct)
         => Ok(await tickets.CreateAsync(request, CurrentUserId, ct));
+
+    /// <summary>
+    /// Changes the status of one channel of the ticket (members of a customer of that
+    /// channel only; 404 otherwise). Returns the updated listed ticket.
+    /// </summary>
+    [HttpPut("{number}/channels/{channelId:long}/status")]
+    public async Task<ActionResult<TicketListItemDto>> UpdateChannelStatus(
+        string number, long channelId, UpdateChannelStatusRequest request, CancellationToken ct)
+        => Ok(await tickets.UpdateChannelStatusAsync(number, channelId, request.Status!.Value, CurrentUserId, ct));
 }

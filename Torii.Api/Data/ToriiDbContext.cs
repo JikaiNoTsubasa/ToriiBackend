@@ -58,6 +58,11 @@ public class ToriiDbContext(DbContextOptions<ToriiDbContext> options) : DbContex
                 .WithOne(t => t.Ticket)
                 .HasForeignKey(t => t.TicketNumber)
                 .OnDelete(DeleteBehavior.Cascade);
+            // Restrict: users are soft-deleted, so the creator stays referenced.
+            entity.HasOne(t => t.CreatedBy)
+                  .WithMany()
+                  .HasForeignKey(t => t.CreatedById)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Customer>(entity =>

@@ -135,11 +135,19 @@ namespace Torii.Api.Migrations
                         .HasColumnType("character varying(16)")
                         .HasDefaultValueSql("next_ticket_number()");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("CreatedById")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Number");
+
+                    b.HasIndex("CreatedById");
 
                     b.ToTable("Tickets");
                 });
@@ -169,6 +177,16 @@ namespace Torii.Api.Migrations
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("StatusChangedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("StatusChangedById")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("TicketNumber")
                         .IsRequired()
@@ -401,6 +419,16 @@ namespace Torii.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Torii.Api.Models.Ticket", b =>
+                {
+                    b.HasOne("Torii.Api.Models.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("CreatedBy");
                 });
 
             modelBuilder.Entity("Torii.Api.Models.TicketChannel", b =>

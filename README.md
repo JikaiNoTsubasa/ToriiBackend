@@ -34,7 +34,8 @@ Copy `Torii.Api/appsettings.example.json` to `Torii.Api/appsettings.json`
 
 Migrations live in `Torii.Api/Migrations` (`InitialCreate`, `AddUserRole`,
 `AddedAccountType`, `AddTicket`, `AddedCustomers`, `AddTicketChannels`, `AddedTicketTitle`,
-`AddTicketEdges`, `AddTicketMessages`):
+`AddTicketEdges`, `AddTicketMessages`, `ReleaseDeletedUserEmails`, `AddTicketCreator`,
+`AddChannelStatus`):
 
 ```bash
 cd Torii.Api
@@ -113,6 +114,27 @@ curl -X POST http://localhost:5080/api/auth/register \
 | GET    | `/api/tickets`              | Tickets visible to the signed-in user               | **Bearer** |
 | GET    | `/api/tickets/send-options` | User's customers that may send, with their targets  | **Bearer** |
 | POST   | `/api/tickets`              | Create `{ sourceCustomerId, targetCustomerId, title, content }` | **Bearer** |
+| PUT    | `/api/tickets/{number}/channels/{channelId}/status` | Change a channel's status `{ status }` (404 if not a participant) | **Bearer** |
+
+The list only returns the channels the user takes part in.
+
+### Statuses (per channel)
+
+Each `TicketChannel` has its own `Status` (`TicketStatus` enum, `NEW` on creation), plus
+`StatusChangedAt` / `StatusChangedById`. Any member of a customer of the channel can change
+it; transitions are free (a closed channel can be reopened).
+
+| Status                    | Meaning                                               |
+|---------------------------|-------------------------------------------------------|
+| `NEW`                     | Created, not yet looked at                            |
+| `ACKNOWLEDGED`            | Seen and accepted, work not started yet               |
+| `IN_PROGRESS`             | Being worked on                                       |
+| `WAITING_FOR_REQUESTER`   | Waiting for an answer from the requester              |
+| `WAITING_FOR_THIRD_PARTY` | Waiting for an external party (supplier, other team…) |
+| `ON_HOLD`                 | Deliberately paused                                   |
+| `RESOLVED`                | A solution was provided, waiting for confirmation     |
+| `CLOSED`                  | Done                                                  |
+| `CANCELLED`               | Dropped without resolution                            |
 
 Message content is HTML from the rich text editor: Angular sanitizes it when rendered
 with `[innerHTML]`, but sanitize it on the backend before any use outside the app
@@ -133,7 +155,22 @@ Deleting a customer is a soft delete (`IsDeleted`, `DeletedAt`, `DeletedById`); 
 | DELETE | `/api/admin/customers/{id}`                  | Delete (soft delete)                 |
 | POST   | `/api/admin/customers/{id}/members`          | Add a member `{ userId }` (409 if already a member) |
 | DELETE | `/api/admin/customers/{id}/members/{userId}` | Remove a member                      |
-| GET    | `/api/admin/users?search=`                   | User search (20 max)                 |
+| GET    | `/api/admin/users?search=&activeOnly=&take=` | Users (disabled included unless `activeOnly`; `take` default 100, max 500) |
+| GET    | `/api/admin/users/{id}`                      | User details                         |
+| POST   | `/api/admin/users`                           | Create `{ email, displayName, password, role }` (409 if the email exists) |
+| PUT    | `/api/admin/users/{id}`                      | Update `{ email, displayName, role, isActive, newPassword? }` |
+| DELETE | `/api/admin/users/{id}`                      | Delete (soft delete)                 |
+
+### User administration safeguards
+
+An admin cannot delete, disable or demote their own account, and the last active
+administrator cannot lose that status (409). Disabling or deleting a user revokes their
+refresh tokens: their session ends when the current access token expires (≤ 15 min), and
+sign-in is refused. Deleting a user releases their email: it becomes
+`deleted-{id}-{unix seconds}-{original email}` (original kept for audit, truncated to 256
+characters), so the address can be used by a new account right away. The
+`ReleaseDeletedUserEmails` data migration applies the same format to accounts deleted
+before. Role changes take effect on the user's next token refresh.
 | GET    | `/api/admin/ticket-edges`                    | Ticket edges (routing configuration) |
 | POST   | `/api/admin/ticket-edges`                    | Create `{ sourceCustomerId, targetCustomerId }` (409 if it exists) |
 | PUT    | `/api/admin/ticket-edges/{id}`               | Update `{ sourceCustomerId, targetCustomerId, isActive }` |
