@@ -28,6 +28,7 @@ public class ProfileManager(ToriiDbContext db, IFileStorage storage) : ToriManag
                    u.Id,
                    u.Email,
                    u.DisplayName,
+                   u.Position,
                    u.AvatarUrl,
                    u.AvatarStorageKey != null,
                    u.Role,
@@ -48,6 +49,7 @@ public class ProfileManager(ToriiDbContext db, IFileStorage storage) : ToriManag
             throw new ValidationException(new Dictionary<string, string[]> { ["displayName"] = ["Display name is required."] });
 
         user.DisplayName = name;
+        user.Position = User.NormalizePosition(request.Position);
         Touch(user);
         await _dbContext.SaveChangesAsync(ct);
         return await GetAsync(userId, ct);

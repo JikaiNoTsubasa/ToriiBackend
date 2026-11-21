@@ -23,8 +23,8 @@ public record AuthResponse(
     UserDto User);
 
 /// <summary>Public representation of a user (no hash).</summary>
-public record UserDto(long Id, string Email, string DisplayName, string AvatarUrl, UserRole Role)
+public record UserDto(long Id, string Email, string DisplayName, string? Position, string AvatarUrl, UserRole Role)
 {
     public static UserDto From(User user) =>
-        new(user.Id, user.Email, user.DisplayName, user.AvatarUrl, user.Role);
+        new(user.Id, user.Email, user.DisplayName, user.Position, user.AvatarUrl, user.Role);
 }

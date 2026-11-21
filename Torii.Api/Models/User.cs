@@ -17,6 +17,13 @@ public class User: Entity
     /// <summary>Name displayed in the UI.</summary>
     public required string DisplayName { get; set; }
 
+    /// <summary>Free text: the person's position / job title in their company (optional).</summary>
+    public string? Position { get; set; }
+
+    /// <summary>Trims a position; blank becomes null (no position).</summary>
+    public static string? NormalizePosition(string? position)
+        => string.IsNullOrWhiteSpace(position) ? null : position.Trim();
+
     /// <summary>Application role; accounts created through /register are USER.</summary>
     public UserRole Role { get; set; } = UserRole.USER;
 

@@ -43,7 +43,7 @@ public class UserManager(ToriiDbContext db) : ToriManager(db)
             .OrderBy(u => u.DisplayName)
             .Take(Math.Clamp(take ?? DefaultTake, 1, MaxTake))
             .Select(u => new AdminUserDto(
-                u.Id, u.Email, u.DisplayName, u.AvatarUrl, u.Role, u.IsActive,
+                u.Id, u.Email, u.DisplayName, u.Position, u.AvatarUrl, u.Role, u.IsActive,
                 u.Customers.Count(c => !c.IsDeleted), u.CreatedAt, u.UpdatedAt))
             .ToListAsync(ct);
     }
@@ -53,7 +53,7 @@ public class UserManager(ToriiDbContext db) : ToriManager(db)
                .AsNoTracking()
                .Where(u => u.Id == id)
                .Select(u => new AdminUserDto(
-                   u.Id, u.Email, u.DisplayName, u.AvatarUrl, u.Role, u.IsActive,
+                   u.Id, u.Email, u.DisplayName, u.Position, u.AvatarUrl, u.Role, u.IsActive,
                    u.Customers.Count(c => !c.IsDeleted), u.CreatedAt, u.UpdatedAt))
                .FirstOrDefaultAsync(ct)
            ?? throw NotFoundException.For("User", id);
@@ -67,6 +67,7 @@ public class UserManager(ToriiDbContext db) : ToriManager(db)
         {
             Email = email,
             DisplayName = NormalizeName(request.DisplayName),
+            Position = User.NormalizePosition(request.Position),
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             Role = request.Role,
             CreatedById = actorId,
@@ -93,6 +94,7 @@ public class UserManager(ToriiDbContext db) : ToriManager(db)
 
         user.Email = email;
         user.DisplayName = NormalizeName(request.DisplayName);
+        user.Position = User.NormalizePosition(request.Position);
         user.Role = request.Role;
         if (!string.IsNullOrEmpty(request.NewPassword))
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);

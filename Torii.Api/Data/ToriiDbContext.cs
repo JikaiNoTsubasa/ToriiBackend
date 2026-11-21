@@ -35,6 +35,7 @@ public class ToriiDbContext(DbContextOptions<ToriiDbContext> options) : DbContex
             entity.HasIndex(u => u.Email).IsUnique();
             entity.Property(u => u.Email).HasMaxLength(256);
             entity.Property(u => u.DisplayName).HasMaxLength(128);
+            entity.Property(u => u.Position).HasMaxLength(128);
             entity.Property(u => u.AccountType).HasDefaultValue(AccountType.APPLICATION);
         });
 

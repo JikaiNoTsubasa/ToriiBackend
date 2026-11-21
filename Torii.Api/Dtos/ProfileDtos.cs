@@ -8,6 +8,7 @@ public record ProfileDto(
     long Id,
     string Email,
     string DisplayName,
+    string? Position,
     string AvatarUrl,
     bool HasCustomAvatar,
     UserRole Role,
@@ -15,7 +16,8 @@ public record ProfileDto(
     IReadOnlyList<CustomerRefDto> Customers);
 
 public record UpdateProfileRequest(
-    [Required, MaxLength(128)] string DisplayName);
+    [Required, MaxLength(128)] string DisplayName,
+    [MaxLength(128)] string? Position = null);
 
 /// <summary>Email change, confirmed with the current password.</summary>
 public record ChangeEmailRequest(

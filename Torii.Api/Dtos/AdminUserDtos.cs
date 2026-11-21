@@ -8,6 +8,7 @@ public record AdminUserDto(
     long Id,
     string Email,
     string DisplayName,
+    string? Position,
     string AvatarUrl,
     UserRole Role,
     bool IsActive,
@@ -20,7 +21,8 @@ public record AdminUserCreateRequest(
     [Required, EmailAddress, MaxLength(256)] string Email,
     [Required, MaxLength(128)] string DisplayName,
     [Required, MinLength(8)] string Password,
-    UserRole Role);
+    UserRole Role,
+    [MaxLength(128)] string? Position = null);
 
 /// <summary>User update; <see cref="NewPassword"/> is optional (null = unchanged).</summary>
 public record AdminUserUpdateRequest(
@@ -28,4 +30,5 @@ public record AdminUserUpdateRequest(
     [Required, MaxLength(128)] string DisplayName,
     UserRole Role,
     bool IsActive,
-    [MinLength(8)] string? NewPassword);
+    [MinLength(8)] string? NewPassword,
+    [MaxLength(128)] string? Position = null);

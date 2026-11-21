@@ -540,6 +540,10 @@ namespace Torii.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("Position")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasColumnType("text");
