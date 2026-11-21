@@ -92,7 +92,7 @@
     {
       "id": "migrationName",
       "type": "promptString",
-      "description": "Nom de la migration EF Core (ex: AddProjectEntity)"
+      "description": "EF Core migration name (e.g. AddProjectEntity)"
     }
   ]
 }

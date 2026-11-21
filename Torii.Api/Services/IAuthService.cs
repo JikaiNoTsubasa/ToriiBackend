@@ -9,6 +9,6 @@ public interface IAuthService
     Task<AuthResponse> RefreshAsync(string refreshToken, CancellationToken ct = default);
     Task RevokeAsync(string refreshToken, CancellationToken ct = default);
 
-    /// <summary>Récupère l'utilisateur courant (données à jour) par son id.</summary>
+    /// <summary>Gets the current user (fresh data) by id.</summary>
     Task<UserDto?> GetByIdAsync(long id, CancellationToken ct = default);
 }

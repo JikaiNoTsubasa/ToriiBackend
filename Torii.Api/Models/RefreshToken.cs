@@ -1,8 +1,8 @@
 namespace Torii.Api.Models;
 
 /// <summary>
-/// Refresh token persistant permettant de renouveler un access token JWT
-/// sans re-login. Rotation à chaque usage (le token utilisé est révoqué).
+/// Persistent refresh token used to renew a JWT access token
+/// without signing in again. Rotated on every use (the used token is revoked).
 /// </summary>
 public class RefreshToken
 {
@@ -11,13 +11,13 @@ public class RefreshToken
     public long UserId { get; set; }
     public User? User { get; set; }
 
-    /// <summary>Valeur opaque (aléatoire cryptographique), unique.</summary>
+    /// <summary>Opaque value (cryptographically random), unique.</summary>
     public required string Token { get; set; }
 
     public DateTime ExpiresAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? RevokedAt { get; set; }
 
-    /// <summary>Token utilisable : non révoqué et non expiré.</summary>
+    /// <summary>Usable token: not revoked and not expired.</summary>
     public bool IsActive => RevokedAt is null && DateTime.UtcNow < ExpiresAt;
 }

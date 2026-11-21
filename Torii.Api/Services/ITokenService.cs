@@ -5,12 +5,12 @@ namespace Torii.Api.Services;
 
 public interface ITokenService
 {
-    /// <summary>Génère un access token JWT signé pour l'utilisateur.</summary>
+    /// <summary>Generates a signed JWT access token for the user.</summary>
     (string token, DateTime expiresAt) CreateAccessToken(User user);
 
-    /// <summary>Génère une valeur opaque aléatoire pour un refresh token.</summary>
+    /// <summary>Generates a random opaque value for a refresh token.</summary>
     string CreateRefreshTokenValue();
 
-    /// <summary>Durée de vie d'un refresh token.</summary>
+    /// <summary>Lifetime of a refresh token.</summary>
     DateTime GetRefreshTokenExpiry();
 }

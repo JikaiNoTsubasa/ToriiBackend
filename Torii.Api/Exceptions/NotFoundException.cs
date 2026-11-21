@@ -1,12 +1,12 @@
 namespace Torii.Api.Exceptions;
 
-/// <summary>Ressource demandée inexistante (HTTP 404).</summary>
+/// <summary>Requested resource does not exist (HTTP 404).</summary>
 public sealed class NotFoundException(string message) : ToriiException(message)
 {
     public override int StatusCode => StatusCodes.Status404NotFound;
-    public override string Title => "Ressource introuvable";
+    public override string Title => "Resource not found";
 
-    /// <summary>Fabrique un message standard « {ressource} #{clé} introuvable ».</summary>
+    /// <summary>Builds a standard "{resource} with id '{key}' was not found" message.</summary>
     public static NotFoundException For(string resource, object key) =>
-        new($"{resource} avec l'identifiant « {key} » est introuvable.");
+        new($"{resource} with id '{key}' was not found.");
 }

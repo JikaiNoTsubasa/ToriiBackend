@@ -3,23 +3,30 @@ using System.ComponentModel.DataAnnotations;
 namespace Torii.Api.Models;
 
 /// <summary>
-/// Utilisateur de l'application Torii. Modèle minimal nécessaire au login.
-/// Le modèle de données métier (projets, tâches, etc.) sera ajouté à côté.
+/// Torii application user.
 /// </summary>
 public class User: Entity
 {
 
-    /// <summary>Adresse e-mail, sert d'identifiant de connexion (unique).</summary>
+    /// <summary>Email address, used as the sign-in identifier (unique).</summary>
     public required string Email { get; set; }
 
-    /// <summary>Hash BCrypt du mot de passe. Jamais exposé côté API.</summary>
+    /// <summary>BCrypt password hash. Never exposed by the API.</summary>
     public required string PasswordHash { get; set; }
 
-    /// <summary>Nom affiché dans l'interface.</summary>
+    /// <summary>Name displayed in the UI.</summary>
     public required string DisplayName { get; set; }
 
-    /// <summary>Refresh tokens émis pour cet utilisateur.</summary>
-    public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+    /// <summary>Application role; accounts created through /register are USER.</summary>
+    public UserRole Role { get; set; } = UserRole.USER;
+
+    /// <summary>Refresh tokens issued to this user.</summary>
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
+
+    /// <summary>Customers the user is a member of (N-N through CustomerMembers).</summary>
+    public ICollection<Customer> Customers { get; set; } = [];
 
     public string AvatarUrl { get; set; } = "https://www.gravatar.com/avatar/?d=mp&s=64";
+
+    public AccountType AccountType = AccountType.APPLICATION;
 }

@@ -1,9 +1,9 @@
 namespace Torii.Api.Exceptions;
 
-/// <summary>Données de requête invalides (HTTP 400), avec détail par champ optionnel.</summary>
+/// <summary>Invalid request data (HTTP 400), with optional per-field details.</summary>
 public sealed class ValidationException : ToriiException
 {
-    private const string DefaultMessage = "Une ou plusieurs erreurs de validation sont survenues.";
+    private const string DefaultMessage = "One or more validation errors occurred.";
 
     public ValidationException(string message) : base(message) { }
 
@@ -12,6 +12,6 @@ public sealed class ValidationException : ToriiException
         : base(message) => Errors = errors;
 
     public override int StatusCode => StatusCodes.Status400BadRequest;
-    public override string Title => "Requête invalide";
+    public override string Title => "Invalid request";
     public override IReadOnlyDictionary<string, string[]>? Errors { get; }
 }

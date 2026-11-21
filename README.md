@@ -1,70 +1,89 @@
 # ⛩️ ToriiBackend
 
-API de Torii, outil web de gestion de projet. « Torii » comme les portails
-japonais : la porte d'entrée de vos projets.
+API of Torii, a web-based project management tool. "Torii" as in the Japanese
+gates: the entrance to your projects.
 
-Le frontend Angular vit dans le repo séparé **ToriiFrontend**.
+The Angular frontend lives in the separate **ToriiFrontend** repository.
 
 ## Stack
 
 - **.NET 10** (ASP.NET Core Web API) — `Torii.Api`
 - **EF Core** + **PostgreSQL** (Npgsql)
-- **Auth** : JWT access token + refresh token (rotation à chaque usage), mots de passe BCrypt
-- **Erreurs** : réponses normalisées ProblemDetails (RFC 9457)
+- **Auth**: JWT access token + refresh token (rotated on every use), BCrypt passwords
+- **Errors**: normalized ProblemDetails responses (RFC 9457)
 
-## Prérequis
+## Prerequisites
 
 - **.NET SDK 10** (`dotnet --version` → `10.0.x`)
-- **PostgreSQL** (local ou distant)
-- Outil EF Core : versionné localement dans `dotnet-tools.json` → `dotnet tool restore`
+- **PostgreSQL** (local or remote)
+- EF Core tool: pinned locally in `dotnet-tools.json` → `dotnet tool restore`
 
 ## Configuration
 
-Copier `Torii.Api/appsettings.example.json` en `Torii.Api/appsettings.json`
-(ignoré par git) puis renseigner :
+Copy `Torii.Api/appsettings.example.json` to `Torii.Api/appsettings.json`
+(ignored by git) and fill in:
 
-- `ConnectionStrings:ToriiDb` — chaîne de connexion PostgreSQL ;
-- `Jwt:Key` — clé secrète de **≥ 32 caractères** (HMAC-SHA256).
+- `ConnectionStrings:ToriiDb` — PostgreSQL connection string;
+- `Jwt:Key` — secret key of **≥ 32 characters** (HMAC-SHA256).
 
-> En dev, une clé vide laisse l'API démarrer mais les tokens ne seront pas
-> fiables. Pour un secret hors dépôt, préférer `dotnet user-secrets` ou une
-> variable d'environnement.
+> In dev, an empty key lets the API start but tokens will not be reliable.
+> To keep secrets out of the repository, prefer `dotnet user-secrets` or an
+> environment variable.
 
-## Base de données
+## Database
 
-Une seule migration `InitialCreate` (tables `Users` + `RefreshTokens`) :
+Migrations live in `Torii.Api/Migrations` (`InitialCreate`, `AddUserRole`,
+`AddedAccountType`, `AddTicket`, `AddedCustomers`, `AddTicketChannels`):
 
 ```bash
 cd Torii.Api
 dotnet ef database update
 ```
 
-Pour faire évoluer le schéma : `dotnet ef migrations add <Nom>` puis
+To evolve the schema: `dotnet ef migrations add <Name>` then
 `dotnet ef database update`.
 
-## Lancer en développement
+## First admin account (seed)
+
+At startup, `Data/Seeders/AdminSeeder.cs` creates an `ADMIN` account **as long as
+no admin exists** (idempotent), from the `Seed:Admin` section:
+
+```bash
+cd Torii.Api
+dotnet user-secrets init
+dotnet user-secrets set "Seed:Admin:Email" "admin@torii.dev"
+dotnet user-secrets set "Seed:Admin:Password" "a-strong-password"
+dotnet user-secrets set "Seed:Admin:DisplayName" "Administrator"   # optional
+```
+
+(or the `Seed__Admin__Email` / `Seed__Admin__Password` environment variables).
+Without configuration, a warning is logged and nothing is created. If the email
+already exists without the admin role, the account is not promoted (warning). The
+role is carried in the JWT: `[Authorize(Roles = "ADMIN")]`.
+
+## Running in development
 
 ```bash
 cd Torii.Api
 dotnet run --launch-profile http   # http://localhost:5080
 ```
 
-- OpenAPI (dev) : `http://localhost:5080/openapi/v1.json`
-- CORS autorisé pour le front sur `http://localhost:4200` (`Program.cs`).
-- VS Code : **Run and Debug → « API (.NET debug) »**, tâches EF dans `.vscode/tasks.json`.
-- Requêtes d'exemple : `Torii.Api/Torii.Api.http`.
+- OpenAPI (dev): `http://localhost:5080/openapi/v1.json`
+- CORS allowed for the frontend on `http://localhost:4200` (`Program.cs`).
+- VS Code: **Run and Debug → "API (.NET debug)"**, EF tasks in `.vscode/tasks.json`.
+- Sample requests: `Torii.Api/Torii.Api.http`.
 
-## Authentification
+## Authentication
 
-Endpoints (`Controllers/AuthController.cs`, préfixe `/api/auth`) :
+Endpoints (`Controllers/AuthController.cs`, `/api/auth` prefix):
 
-| Méthode | Route       | Description                                   | Auth       |
-|---------|-------------|-----------------------------------------------|------------|
-| POST    | `/register` | Crée un compte, renvoie les tokens            | non        |
-| POST    | `/login`    | Connexion, renvoie les tokens                 | non        |
-| POST    | `/refresh`  | Échange un refresh token contre de nouveaux   | non        |
-| POST    | `/logout`   | Révoque un refresh token                      | non        |
-| GET     | `/me`       | Utilisateur courant                           | **Bearer** |
+| Method | Route       | Description                              | Auth       |
+|--------|-------------|------------------------------------------|------------|
+| POST   | `/register` | Creates an account, returns the tokens   | no         |
+| POST   | `/login`    | Signs in, returns the tokens             | no         |
+| POST   | `/refresh`  | Exchanges a refresh token for new tokens | no         |
+| POST   | `/logout`   | Revokes a refresh token                  | no         |
+| GET    | `/me`       | Current user                             | **Bearer** |
 
 ```bash
 curl -X POST http://localhost:5080/api/auth/register \
@@ -72,44 +91,81 @@ curl -X POST http://localhost:5080/api/auth/register \
   -d '{"email":"a@b.co","password":"password123","displayName":"Alice"}'
 ```
 
+## Tickets
+
+- `Number` primary key in the `TI000001` format, generated by PostgreSQL (`TicketNumbers`
+  sequence + `next_ticket_number()` function).
+- Model: `Ticket` 1─N `TicketChannel` (bidirectional) 1─N `ChannelParticipant` N─1 `Customer`
+  N─N `User` (`CustomerMembers` table).
+- Visibility (`TicketManager.QueryVisibleTo`): a ticket is visible if the user is a member
+  of a customer taking part in one of its channels (soft-deleted channels and customers
+  excluded, no ADMIN exception). Reuse it for every ticket endpoint.
+
+| Method | Route          | Description                          | Auth       |
+|--------|----------------|--------------------------------------|------------|
+| GET    | `/api/tickets` | Tickets visible to the signed-in user | **Bearer** |
+
+## Administration (ADMIN role)
+
+Controllers in `Controllers/Admin/*`, protected by `[Authorize(Roles = nameof(UserRole.ADMIN))]`.
+Deleting a customer is a soft delete (`IsDeleted`, `DeletedAt`, `DeletedById`); the
+`CreatedById` / `UpdatedById` audit fields are set to the signed-in admin.
+
+| Method | Route                                        | Description                          |
+|--------|----------------------------------------------|--------------------------------------|
+| GET    | `/api/admin/customers`                       | List (name, member count)            |
+| POST   | `/api/admin/customers`                       | Create `{ name }`                    |
+| GET    | `/api/admin/customers/{id}`                  | Details + members                    |
+| PUT    | `/api/admin/customers/{id}`                  | Rename `{ name }`                    |
+| DELETE | `/api/admin/customers/{id}`                  | Delete (soft delete)                 |
+| POST   | `/api/admin/customers/{id}/members`          | Add a member `{ userId }` (409 if already a member) |
+| DELETE | `/api/admin/customers/{id}/members/{userId}` | Remove a member                      |
+| GET    | `/api/admin/users?search=`                   | User search (20 max)                 |
+
 ## Structure
 
 ```
 ToriiBackend/
 ├── Torii.slnx
+├── dotnet-tools.json            # dotnet-ef 10 (local tool)
 └── Torii.Api/
-    ├── Program.cs              # DI, EF, JWT, CORS, ProblemDetails, pipeline
-    ├── Controllers/            # AuthController, ToriController (base)
-    ├── Data/ToriiDbContext.cs
-    ├── Dtos/AuthDtos.cs
-    ├── Exceptions/             # ToriiException + Validation/NotFound/Conflict/Authentication
-    ├── Handlers/               # GlobalExceptionHandler → ProblemDetails
-    ├── Managers/ToriManager.cs # base des managers métier
-    ├── Models/                 # Entity (base), User, RefreshToken, DTO/DtoHelper
-    ├── Services/               # TokenService, AuthService
-    └── Migrations/             # InitialCreate
+    ├── Program.cs               # DI, EF, JWT, CORS, ProblemDetails, JSON, seed, pipeline
+    ├── Controllers/             # AuthController, TicketController, ToriController (base)
+    │   └── Admin/               # AdminCustomerController, AdminUserController
+    ├── Data/                    # ToriiDbContext, UpperCaseEnumConverter, Seeders/AdminSeeder
+    ├── Dtos/                    # Auth, Ticket, Customer DTOs
+    ├── Exceptions/              # ToriiException + Validation/NotFound/Conflict/Authentication
+    ├── Handlers/                # GlobalExceptionHandler → ProblemDetails
+    ├── Json/                    # UPPERCASE enum JSON serialization
+    ├── Managers/                # ToriManager (base), Ticket/Customer/User managers
+    ├── Models/                  # Entity (base), User, Customer, Ticket, TicketChannel…
+    ├── Services/                # TokenService, AuthService
+    └── Migrations/
 ```
 
-## Ajouter le modèle métier
+## Adding to the business model
 
-1. Créer les entités dans `Models/` (hériter de `Entity`). Les enums sont stockés
-   automatiquement en chaîne MAJUSCULE, en base (`Data/UpperCaseEnumConverter.cs`) comme
-   en JSON (`Json/UpperCaseEnumJson.cs`, entiers refusés en entrée, casse ignorée) ; nommer
-   les valeurs en `UPPER_SNAKE` (ex. `ON_GOING`) pour garder la séparation des mots.
-2. Les déclarer via `DbSet<>` dans `Data/ToriiDbContext.cs` (+ config dans `OnModelCreating`).
-3. `dotnet ef migrations add <Nom>` puis `dotnet ef database update`.
-4. Ajouter un manager (hérite de `ToriManager`), l'enregistrer dans `Program.cs`.
-5. Exposer des contrôleurs `[Authorize]` sous `/api/...` ; lever des `ToriiException` pour les erreurs métier.
+1. Create the entities in `Models/` (inherit from `Entity`). Enums are automatically
+   stored as UPPERCASE strings, in the database (`Data/UpperCaseEnumConverter.cs`) as well
+   as in JSON (`Json/UpperCaseEnumJson.cs`, integers rejected on input, case ignored); name
+   the values in `UPPER_SNAKE` (e.g. `ON_GOING`) to keep word boundaries.
+2. Declare them with a `DbSet<>` in `Data/ToriiDbContext.cs` (+ configuration in `OnModelCreating`).
+3. `dotnet ef migrations add <Name>` then `dotnet ef database update`.
+4. Add a manager (inherits from `ToriManager`) and register it in `Program.cs`.
+5. Expose `[Authorize]` controllers under `/api/...`; throw `ToriiException`s for business errors.
 
-## Build de production
+All user-facing text (API error messages, ProblemDetails titles) and code comments
+are written in English.
+
+## Production build
 
 ```bash
 cd Torii.Api && dotnet publish -c Release
 ```
 
-## À faire
+## To do
 
-- [ ] Modèle de données métier
-- [ ] Rôles / autorisations fines si nécessaire
-- [ ] Tests unitaires et CI
-- [ ] Durcir le stockage des tokens (cookie httpOnly) avant prod
+- [ ] Rest of the business data model
+- [ ] Fine-grained roles / permissions if needed
+- [ ] Unit tests and CI
+- [ ] Harden token storage (httpOnly cookie) before production

@@ -5,10 +5,10 @@ using Torii.Api.Exceptions;
 namespace Torii.Api.Handlers;
 
 /// <summary>
-/// Intercepte les exceptions non gérées et renvoie une réponse normalisée au
-/// format <c>application/problem+json</c> (RFC 9457).
-/// Les <see cref="ToriiException"/> sont mappées sur leur code HTTP et leur titre ;
-/// toute autre exception devient une 500 générique, sans fuite de détails techniques.
+/// Catches unhandled exceptions and returns a normalized
+/// <c>application/problem+json</c> response (RFC 9457).
+/// <see cref="ToriiException"/>s are mapped to their HTTP status code and title;
+/// any other exception becomes a generic 500, without leaking technical details.
 /// </summary>
 public sealed class GlobalExceptionHandler(
     IProblemDetailsService problemDetailsService,
@@ -23,11 +23,11 @@ public sealed class GlobalExceptionHandler(
             _ => Unexpected(),
         };
 
-        // Erreur métier attendue → warning ; erreur inattendue (500) → error avec stack.
+        // Expected business error → warning; unexpected error (500) → error with stack trace.
         if (problemDetails.Status >= StatusCodes.Status500InternalServerError)
-            logger.LogError(exception, "Erreur non gérée : {Message}", exception.Message);
+            logger.LogError(exception, "Unhandled error: {Message}", exception.Message);
         else
-            logger.LogWarning("Erreur métier ({Status}) : {Message}",
+            logger.LogWarning("Business error ({Status}): {Message}",
                 problemDetails.Status, exception.Message);
 
         httpContext.Response.StatusCode = problemDetails.Status!.Value;
@@ -58,7 +58,7 @@ public sealed class GlobalExceptionHandler(
     private static ProblemDetails Unexpected() => new()
     {
         Status = StatusCodes.Status500InternalServerError,
-        Title = "Erreur interne du serveur",
-        Detail = "Une erreur inattendue est survenue.",
+        Title = "Internal server error",
+        Detail = "An unexpected error occurred.",
     };
 }

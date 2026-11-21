@@ -4,8 +4,8 @@ using System.Text.Json.Serialization;
 namespace Torii.Api.Json;
 
 /// <summary>
-/// Politique de nommage MAJUSCULE, identique à <c>UpperCaseEnumConverter</c> côté base :
-/// une valeur d'enum a ainsi la même représentation en JSON et en DB.
+/// UPPERCASE naming policy, identical to <c>UpperCaseEnumConverter</c> on the database side:
+/// an enum value has the same representation in JSON and in the DB.
 /// </summary>
 public sealed class UpperCaseNamingPolicy : JsonNamingPolicy
 {
@@ -15,8 +15,8 @@ public sealed class UpperCaseNamingPolicy : JsonNamingPolicy
 public static class UpperCaseEnumJson
 {
     /// <summary>
-    /// Sérialise les enums en chaîne MAJUSCULE (ex. <c>"ON_GOING"</c>). Les valeurs
-    /// numériques sont refusées en entrée : le client doit envoyer le nom.
+    /// Serializes enums as UPPERCASE strings (e.g. <c>"ON_GOING"</c>). Numeric values
+    /// are rejected on input: the client must send the name.
     /// </summary>
     public static JsonSerializerOptions UseUpperCaseEnumStrings(this JsonSerializerOptions options)
     {

@@ -7,7 +7,7 @@ using Torii.Api.Models;
 
 namespace Torii.Api.Services;
 
-/// <summary>Options liées aux JWT, liées à la section "Jwt" de la configuration.</summary>
+/// <summary>JWT options, bound to the "Jwt" configuration section.</summary>
 public class JwtOptions
 {
     public string Issuer { get; set; } = "Torii";
@@ -30,6 +30,8 @@ public class TokenService(Microsoft.Extensions.Options.IOptions<JwtOptions> opti
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim(ClaimTypes.Name, user.DisplayName),
+            // Enables [Authorize(Roles = "ADMIN")]; same UPPERCASE label as in the database / JSON.
+            new Claim(ClaimTypes.Role, user.Role.ToString().ToUpperInvariant()),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
 

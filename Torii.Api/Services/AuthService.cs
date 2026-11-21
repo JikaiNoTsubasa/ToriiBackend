@@ -13,7 +13,7 @@ public class AuthService(ToriiDbContext db, ITokenService tokens) : IAuthService
         var email = request.Email.Trim().ToLowerInvariant();
 
         if (await db.Users.AnyAsync(u => u.Email == email, ct))
-            throw new ConflictException("Un compte existe déjà avec cet e-mail.");
+            throw new ConflictException("An account already exists with this email.");
 
         var user = new User
         {
@@ -34,7 +34,7 @@ public class AuthService(ToriiDbContext db, ITokenService tokens) : IAuthService
         var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
 
         if (user is null || !user.IsActive || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-            throw new AuthenticationException("E-mail ou mot de passe invalide.");
+            throw new AuthenticationException("Invalid email or password.");
 
         return await IssueTokensAsync(user, ct);
     }
@@ -46,9 +46,9 @@ public class AuthService(ToriiDbContext db, ITokenService tokens) : IAuthService
             .FirstOrDefaultAsync(t => t.Token == refreshToken, ct);
 
         if (stored is null || !stored.IsActive || stored.User is null || !stored.User.IsActive)
-            throw new AuthenticationException("Refresh token invalide ou expiré.");
+            throw new AuthenticationException("Invalid or expired refresh token.");
 
-        // Rotation : le token courant est révoqué et un nouveau est émis.
+        // Rotation: the current token is revoked and a new one is issued.
         stored.RevokedAt = DateTime.UtcNow;
         var response = await IssueTokensAsync(stored.User, ct);
         return response;
@@ -69,7 +69,7 @@ public class AuthService(ToriiDbContext db, ITokenService tokens) : IAuthService
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == id && u.IsActive, ct);
         return user is null
             ? null
-            : new UserDto(user.Id, user.Email, user.DisplayName, user.AvatarUrl);
+            : UserDto.From(user);
     }
 
     private async Task<AuthResponse> IssueTokensAsync(User user, CancellationToken ct)
@@ -89,6 +89,6 @@ public class AuthService(ToriiDbContext db, ITokenService tokens) : IAuthService
             accessToken,
             refresh.Token,
             accessExpiry,
-            new UserDto(user.Id, user.Email, user.DisplayName, user.AvatarUrl));
+            UserDto.From(user));
     }
 }

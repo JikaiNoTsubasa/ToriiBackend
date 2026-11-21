@@ -1,6 +1,6 @@
 @ToriiApi_HostAddress = http://localhost:5080
 
-### Register — crée un compte et renvoie les tokens
+### Register — creates an account and returns the tokens
 # @name register
 POST {{ToriiApi_HostAddress}}/api/auth/register
 Content-Type: application/json
@@ -21,11 +21,11 @@ Content-Type: application/json
   "password": "password123"
 }
 
-### Me — nécessite un access token (repris de la réponse login/register)
+### Me — requires an access token (taken from the login/register response)
 GET {{ToriiApi_HostAddress}}/api/auth/me
 Authorization: Bearer {{login.response.body.accessToken}}
 
-### Refresh — échange le refresh token contre de nouveaux tokens
+### Refresh — exchanges the refresh token for new tokens
 POST {{ToriiApi_HostAddress}}/api/auth/refresh
 Content-Type: application/json
 
@@ -33,7 +33,7 @@ Content-Type: application/json
   "refreshToken": "{{login.response.body.refreshToken}}"
 }
 
-### Logout — révoque le refresh token
+### Logout — revokes the refresh token
 POST {{ToriiApi_HostAddress}}/api/auth/logout
 Content-Type: application/json
 

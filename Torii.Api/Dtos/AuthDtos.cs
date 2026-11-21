@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Torii.Api.Models;
 
 namespace Torii.Api.Dtos;
 
@@ -14,12 +15,16 @@ public record LoginRequest(
 public record RefreshRequest(
     [Required] string RefreshToken);
 
-/// <summary>Renvoyé après login/register/refresh.</summary>
+/// <summary>Returned after login/register/refresh.</summary>
 public record AuthResponse(
     string AccessToken,
     string RefreshToken,
     DateTime AccessTokenExpiresAt,
     UserDto User);
 
-/// <summary>Représentation publique d'un utilisateur (sans hash).</summary>
-public record UserDto(long Id, string Email, string DisplayName, string AvatarUrl);
+/// <summary>Public representation of a user (no hash).</summary>
+public record UserDto(long Id, string Email, string DisplayName, string AvatarUrl, UserRole Role)
+{
+    public static UserDto From(User user) =>
+        new(user.Id, user.Email, user.DisplayName, user.AvatarUrl, user.Role);
+}

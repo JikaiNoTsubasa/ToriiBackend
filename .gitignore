@@ -7,7 +7,7 @@
 project.lock.json
 artifacts/
 
-# ASP.NET secrets locaux (ne jamais committer les vraies valeurs)
+# Local ASP.NET secrets (never commit the real values)
 appsettings.*.local.json
 appsettings.json
 
@@ -15,7 +15,7 @@ appsettings.json
 coverage/
 TestResults/
 
-# ---------- Éditeurs / OS ----------
+# ---------- Editors / OS ----------
 .DS_Store
 Thumbs.db
 *.swp

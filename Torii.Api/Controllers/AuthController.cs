@@ -10,8 +10,8 @@ namespace Torii.Api.Controllers;
 [Route("api/auth")]
 public class AuthController(IAuthService auth) : ControllerBase
 {
-    // Les erreurs métier remontent sous forme d'exceptions et sont converties
-    // en réponses ProblemDetails par le GlobalExceptionHandler.
+    // Business errors bubble up as exceptions and are converted
+    // into ProblemDetails responses by the GlobalExceptionHandler.
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request, CancellationToken ct)
         => Ok(await auth.RegisterAsync(request, ct));
