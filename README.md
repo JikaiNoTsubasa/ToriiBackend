@@ -131,7 +131,7 @@ response can be cached for 30 days.
 
 | Method | Route                       | Description                                         | Auth       |
 |--------|-----------------------------|-----------------------------------------------------|------------|
-| GET    | `/api/tickets`              | Tickets visible to the signed-in user               | **Bearer** |
+| GET    | `/api/tickets?search=&status=&page=&pageSize=` | One page of the visible tickets, newest first (see below) | **Bearer** |
 | GET    | `/api/tickets/send-options` | User's customers that may send, with their targets  | **Bearer** |
 | POST   | `/api/tickets`              | Create `{ sourceCustomerId, targetCustomerId, title, content }` | **Bearer** |
 | PUT    | `/api/tickets/{number}/channels/{channelId}/status` | Change a channel's status `{ status }` (404 if not a participant) | **Bearer** |
@@ -140,6 +140,12 @@ response can be cached for 30 days.
 | POST   | `/api/tickets/{number}/channels/{channelId}/messages` | Reply in a channel `{ content }` (participants only) | **Bearer** |
 | POST   | `/api/tickets/{number}/channels/{channelId}/messages/{messageId}/forward` | Forward a message `{ targetChannelId }` or `{ sourceCustomerId, targetCustomerId }` (+ optional `comment`) | **Bearer** |
 | POST   | `/api/tickets/{number}/channels` | Open a channel `{ sourceCustomerId, targetCustomerId, content }` (edge required; 409 if these customers are already linked) | **Bearer** |
+
+The list is filtered and paginated server-side and returns a `PagedResult`
+(`{ items, page, pageSize, totalCount, totalPages }`): `search` matches the number or the
+title (case-insensitive `ILIKE`, wildcards escaped); `status` (repeatable,
+`?status=NEW&status=IN_PROGRESS`) keeps tickets where at least one of the user's channels has
+one of them — absent = any status; `page` is 1-based, `pageSize` defaults to 25 (max 100).
 
 The list and the details only return the channels the user takes part in: the same ticket
 looks different depending on who reads it (e.g. a channel opened between Globex and a

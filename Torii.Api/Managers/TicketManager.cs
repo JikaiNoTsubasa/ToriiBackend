@@ -30,13 +30,54 @@ public partial class TicketManager(
                 !p.Customer.IsDeleted &&
                 p.Customer.Members.Any(u => u.Id == userId))));
 
-    public async Task<IReadOnlyList<TicketListItemDto>> ListVisibleAsync(long userId, CancellationToken ct = default)
-        => await QueryVisibleTo(userId)
-            .AsNoTracking()
-            .OrderBy(t => t.Number)
-            .Select(ToListItem(userId))
-            .AsSplitQuery()
-            .ToListAsync(ct);
+    public const int DefaultPageSize = 25;
+    public const int MaxPageSize = 100;
+
+    /// <summary>
+    /// One page of the tickets visible to the user, newest first, filtered by number / title
+    /// and by the status of the user's own channels (see <see cref="TicketListQuery"/>).
+    /// </summary>
+    public async Task<PagedResult<TicketListItemDto>> ListVisibleAsync(
+        long userId, TicketListQuery query, CancellationToken ct = default)
+    {
+        var page = Math.Max(1, query.Page);
+        var pageSize = Math.Clamp(query.PageSize, 1, MaxPageSize);
+        var tickets = QueryVisibleTo(userId).AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var pattern = $"%{EscapeLike(query.Search.Trim())}%";
+            tickets = tickets.Where(t => EF.Functions.ILike(t.Number, pattern, "\\")
+                                      || EF.Functions.ILike(t.Title, pattern, "\\"));
+        }
+
+        if (query.Statuses is { } statuses)
+        {
+            // Only the channels the user takes part in count (the ones they see).
+            var wanted = statuses.Distinct().ToList();
+            tickets = tickets.Where(t => t.Channels!.Any(ch =>
+                !ch.IsDeleted && wanted.Contains(ch.Status) &&
+                ch.Participants.Any(p => !p.Customer.IsDeleted && p.Customer.Members.Any(u => u.Id == userId))));
+        }
+
+        var total = await tickets.CountAsync(ct);
+        var items = total == 0
+            ? []
+            : await tickets
+                .OrderByDescending(t => t.CreatedAt)
+                .ThenByDescending(t => t.Number)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(ToListItem(userId))
+                .AsSplitQuery()
+                .ToListAsync(ct);
+
+        return new PagedResult<TicketListItemDto>(items, page, pageSize, total);
+    }
+
+    /// <summary>Escapes LIKE wildcards typed by the user.</summary>
+    private static string EscapeLike(string value)
+        => value.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
 
     /// <summary>
     /// Customers the user belongs to that may send tickets, each with its allowed

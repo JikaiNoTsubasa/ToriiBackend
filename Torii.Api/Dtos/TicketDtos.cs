@@ -11,6 +11,13 @@ public record TicketListItemDto(
     DateTime CreatedAt,
     IReadOnlyList<TicketChannelDto> Channels);
 
+/// <summary>
+/// Ticket list query: <see cref="Search"/> matches the number or the title (case-insensitive);
+/// <see cref="Statuses"/> keeps tickets where at least one of the user's channels has one of
+/// them (null = any status).
+/// </summary>
+public record TicketListQuery(string? Search, IReadOnlyCollection<TicketStatus>? Statuses, int Page, int PageSize);
+
 /// <summary>Minimal user reference for display (name + avatar).</summary>
 public record UserRefDto(long Id, string DisplayName, string AvatarUrl);
 

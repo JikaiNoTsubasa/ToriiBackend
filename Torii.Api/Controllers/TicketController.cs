@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Torii.Api.Dtos;
 using Torii.Api.Managers;
+using Torii.Api.Models;
 
 namespace Torii.Api.Controllers;
 
@@ -12,10 +13,23 @@ public class TicketController(TicketManager tickets) : ToriController
     /// <summary>Maximum size of one upload request (all files together).</summary>
     private const long MaxUploadRequestBytes = 100L * 1024 * 1024;
 
-    /// <summary>Tickets visible to the signed-in user (through their customers).</summary>
+    /// <summary>
+    /// One page of the tickets visible to the signed-in user (through their customers), newest
+    /// first. <c>search</c> matches the number or the title; <c>status</c> (repeatable, e.g.
+    /// <c>?status=NEW&amp;status=IN_PROGRESS</c>) keeps tickets where at least one of the user's
+    /// channels has one of them — absent = any status. <c>pageSize</c> is capped at 100.
+    /// </summary>
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<TicketListItemDto>>> List(CancellationToken ct)
-        => Ok(await tickets.ListVisibleAsync(CurrentUserId, ct));
+    public async Task<ActionResult<PagedResult<TicketListItemDto>>> List(
+        [FromQuery] string? search,
+        [FromQuery(Name = "status")] TicketStatus[]? statuses,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = TicketManager.DefaultPageSize,
+        CancellationToken ct = default)
+        => Ok(await tickets.ListVisibleAsync(
+            CurrentUserId,
+            new TicketListQuery(search, statuses is { Length: > 0 } ? statuses : null, page, pageSize),
+            ct));
 
     /// <summary>
     /// Customers the signed-in user may send tickets from, each with its allowed
