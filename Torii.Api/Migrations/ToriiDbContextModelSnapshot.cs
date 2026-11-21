@@ -39,6 +39,58 @@ namespace Torii.Api.Migrations
                     b.ToTable("CustomerMembers");
                 });
 
+            modelBuilder.Entity("Torii.Api.Models.ChannelFile", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("CreatedById")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("DeletedById")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("ForwardedFromChannelId")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<long>("StoredFileId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("TicketChannelId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("UpdatedById")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoredFileId");
+
+                    b.HasIndex("TicketChannelId", "StoredFileId")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.ToTable("ChannelFiles");
+                });
+
             modelBuilder.Entity("Torii.Api.Models.ChannelParticipant", b =>
                 {
                     b.Property<long>("TicketChannelId")
@@ -127,6 +179,64 @@ namespace Torii.Api.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
+            modelBuilder.Entity("Torii.Api.Models.StoredFile", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("CreatedById")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("DeletedById")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("UpdatedById")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StorageKey")
+                        .IsUnique();
+
+                    b.ToTable("StoredFiles");
+                });
+
             modelBuilder.Entity("Torii.Api.Models.Ticket", b =>
                 {
                     b.Property<string>("Number")
@@ -150,6 +260,47 @@ namespace Torii.Api.Migrations
                     b.HasIndex("CreatedById");
 
                     b.ToTable("Tickets");
+                });
+
+            modelBuilder.Entity("Torii.Api.Models.TicketActivity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("ActorId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("ChannelFileId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FromStatus")
+                        .HasColumnType("text");
+
+                    b.Property<long>("TicketChannelId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ToStatus")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorId");
+
+                    b.HasIndex("ChannelFileId");
+
+                    b.HasIndex("TicketChannelId", "CreatedAt");
+
+                    b.ToTable("TicketActivities");
                 });
 
             modelBuilder.Entity("Torii.Api.Models.TicketChannel", b =>
@@ -396,6 +547,25 @@ namespace Torii.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Torii.Api.Models.ChannelFile", b =>
+                {
+                    b.HasOne("Torii.Api.Models.StoredFile", "StoredFile")
+                        .WithMany("ChannelLinks")
+                        .HasForeignKey("StoredFileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Torii.Api.Models.TicketChannel", "TicketChannel")
+                        .WithMany("Files")
+                        .HasForeignKey("TicketChannelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StoredFile");
+
+                    b.Navigation("TicketChannel");
+                });
+
             modelBuilder.Entity("Torii.Api.Models.ChannelParticipant", b =>
                 {
                     b.HasOne("Torii.Api.Models.Customer", "Customer")
@@ -434,6 +604,32 @@ namespace Torii.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("CreatedBy");
+                });
+
+            modelBuilder.Entity("Torii.Api.Models.TicketActivity", b =>
+                {
+                    b.HasOne("Torii.Api.Models.User", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Torii.Api.Models.ChannelFile", "ChannelFile")
+                        .WithMany()
+                        .HasForeignKey("ChannelFileId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Torii.Api.Models.TicketChannel", "TicketChannel")
+                        .WithMany("Activities")
+                        .HasForeignKey("TicketChannelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Actor");
+
+                    b.Navigation("ChannelFile");
+
+                    b.Navigation("TicketChannel");
                 });
 
             modelBuilder.Entity("Torii.Api.Models.TicketChannel", b =>
@@ -497,6 +693,11 @@ namespace Torii.Api.Migrations
                     b.Navigation("ChannelParticipations");
                 });
 
+            modelBuilder.Entity("Torii.Api.Models.StoredFile", b =>
+                {
+                    b.Navigation("ChannelLinks");
+                });
+
             modelBuilder.Entity("Torii.Api.Models.Ticket", b =>
                 {
                     b.Navigation("Channels");
@@ -504,6 +705,10 @@ namespace Torii.Api.Migrations
 
             modelBuilder.Entity("Torii.Api.Models.TicketChannel", b =>
                 {
+                    b.Navigation("Activities");
+
+                    b.Navigation("Files");
+
                     b.Navigation("Messages");
 
                     b.Navigation("Participants");

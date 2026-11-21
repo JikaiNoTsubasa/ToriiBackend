@@ -16,6 +16,9 @@ public class ToriiDbContext(DbContextOptions<ToriiDbContext> options) : DbContex
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<TicketEdge> TicketEdges => Set<TicketEdge>();
     public DbSet<TicketMessage> TicketMessages => Set<TicketMessage>();
+    public DbSet<StoredFile> StoredFiles => Set<StoredFile>();
+    public DbSet<ChannelFile> ChannelFiles => Set<ChannelFile>();
+    public DbSet<TicketActivity> TicketActivities => Set<TicketActivity>();
 
     /// <summary>Ticket number sequence (TI000001, TI000002…).</summary>
     public const string TicketNumberSequence = "TicketNumbers";
@@ -137,6 +140,51 @@ public class ToriiDbContext(DbContextOptions<ToriiDbContext> options) : DbContex
             entity.HasOne(m => m.ForwardedFrom)
                   .WithMany()
                   .HasForeignKey(m => m.ForwardedFromId)
+                  .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<StoredFile>(entity =>
+        {
+            entity.HasIndex(f => f.StorageKey).IsUnique();
+            entity.Property(f => f.StorageKey).HasMaxLength(256);
+            entity.Property(f => f.FileName).HasMaxLength(255);
+            entity.Property(f => f.ContentType).HasMaxLength(255);
+        });
+
+        modelBuilder.Entity<ChannelFile>(entity =>
+        {
+            // A file is linked once per channel (soft-deleted links do not block re-adding it).
+            entity.HasIndex(cf => new { cf.TicketChannelId, cf.StoredFileId })
+                  .IsUnique()
+                  .HasFilter("\"IsDeleted\" = false");
+            entity.HasIndex(cf => cf.StoredFileId);
+
+            entity.HasOne(cf => cf.TicketChannel)
+                  .WithMany(ch => ch.Files)
+                  .HasForeignKey(cf => cf.TicketChannelId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            // Restrict: the stored file outlives its links (it may be linked to other channels).
+            entity.HasOne(cf => cf.StoredFile)
+                  .WithMany(f => f.ChannelLinks)
+                  .HasForeignKey(cf => cf.StoredFileId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TicketActivity>(entity =>
+        {
+            entity.HasIndex(a => new { a.TicketChannelId, a.CreatedAt });
+
+            entity.HasOne(a => a.TicketChannel)
+                  .WithMany(ch => ch.Activities)
+                  .HasForeignKey(a => a.TicketChannelId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(a => a.Actor)
+                  .WithMany()
+                  .HasForeignKey(a => a.ActorId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(a => a.ChannelFile)
+                  .WithMany()
+                  .HasForeignKey(a => a.ChannelFileId)
                   .OnDelete(DeleteBehavior.SetNull);
         });
 

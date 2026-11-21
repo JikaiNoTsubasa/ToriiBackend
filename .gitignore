@@ -11,6 +11,9 @@ artifacts/
 appsettings.*.local.json
 appsettings.json
 
+# Uploaded files (Storage:Path)
+storage/
+
 # Coverage / tests
 coverage/
 TestResults/

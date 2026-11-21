@@ -17,6 +17,7 @@ const string CorsPolicy = "ToriiFrontend";
 // --- Configuration ---
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
+builder.Services.Configure<FileStorageOptions>(builder.Configuration.GetSection("Storage"));
 
 // --- Database (PostgreSQL through EF Core) ---
 builder.Services.AddDbContext<ToriiDbContext>(options =>
@@ -30,6 +31,7 @@ builder.Services.AddScoped<TicketManager>();
 builder.Services.AddScoped<CustomerManager>();
 builder.Services.AddScoped<UserManager>();
 builder.Services.AddScoped<TicketEdgeManager>();
+builder.Services.AddSingleton<IFileStorage, DiskFileStorage>();
 
 // --- JWT Bearer authentication ---
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

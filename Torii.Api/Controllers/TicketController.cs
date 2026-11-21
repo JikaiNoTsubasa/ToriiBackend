@@ -9,6 +9,9 @@ namespace Torii.Api.Controllers;
 [Route("api/tickets")]
 public class TicketController(TicketManager tickets) : ToriController
 {
+    /// <summary>Maximum size of one upload request (all files together).</summary>
+    private const long MaxUploadRequestBytes = 100L * 1024 * 1024;
+
     /// <summary>Tickets visible to the signed-in user (through their customers).</summary>
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<TicketListItemDto>>> List(CancellationToken ct)
@@ -62,6 +65,38 @@ public class TicketController(TicketManager tickets) : ToriController
     public async Task<ActionResult<ForwardResultDto>> ForwardMessage(
         string number, long channelId, long messageId, ForwardMessageRequest request, CancellationToken ct)
         => Ok(await tickets.ForwardMessageAsync(number, channelId, messageId, request, CurrentUserId, ct));
+
+    /// <summary>
+    /// Uploads files to a channel (multipart field <c>files</c>, several allowed; each file is
+    /// limited by <c>Storage:MaxFileSizeMb</c>). Recorded in the channel's activity feed.
+    /// </summary>
+    [HttpPost("{number}/channels/{channelId:long}/files")]
+    [RequestSizeLimit(MaxUploadRequestBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxUploadRequestBytes)]
+    public async Task<ActionResult<IReadOnlyList<FileRefDto>>> UploadFiles(
+        string number, long channelId, [FromForm] List<IFormFile> files, CancellationToken ct)
+        => Ok(await tickets.UploadFilesAsync(number, channelId, files, CurrentUserId, ct));
+
+    /// <summary>
+    /// Downloads a file of a channel (participants only). Always served as an attachment with
+    /// <c>nosniff</c>, so uploaded HTML / scripts are never rendered by the browser.
+    /// </summary>
+    [HttpGet("{number}/channels/{channelId:long}/files/{fileId:long}")]
+    public async Task<IActionResult> DownloadFile(string number, long channelId, long fileId, CancellationToken ct)
+    {
+        var file = await tickets.OpenFileAsync(number, channelId, fileId, CurrentUserId, ct);
+        Response.Headers.XContentTypeOptions = "nosniff";
+        return File(file.Content, "application/octet-stream", file.FileName);
+    }
+
+    /// <summary>
+    /// Forwards a file to another channel of the ticket (only the file id is linked): an existing
+    /// channel, or the channel between two customers, created if needed (edge required).
+    /// </summary>
+    [HttpPost("{number}/channels/{channelId:long}/files/{fileId:long}/forward")]
+    public async Task<ActionResult<ForwardFileResultDto>> ForwardFile(
+        string number, long channelId, long fileId, ForwardFileRequest request, CancellationToken ct)
+        => Ok(await tickets.ForwardFileAsync(number, channelId, fileId, request, CurrentUserId, ct));
 
     /// <summary>
     /// Opens a new channel on the ticket towards another customer allowed by the ticket

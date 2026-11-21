@@ -20,4 +20,10 @@ public class TicketChannel : Entity
 
     /// <summary>Messages exchanged in the channel, oldest first by <c>CreatedAt</c>.</summary>
     public ICollection<TicketMessage> Messages { get; set; } = [];
+
+    /// <summary>Files attached to the channel (uploaded or forwarded).</summary>
+    public ICollection<ChannelFile> Files { get; set; } = [];
+
+    /// <summary>Activity feed of the channel (status changes, files, …).</summary>
+    public ICollection<TicketActivity> Activities { get; set; } = [];
 }

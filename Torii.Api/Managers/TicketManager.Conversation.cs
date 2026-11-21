@@ -65,6 +65,60 @@ public partial class TicketManager
             .ToListAsync(ct);
         var messagesByChannel = messages.ToLookup(m => m.ChannelId);
 
+        var activities = await _dbContext.TicketActivities
+            .AsNoTracking()
+            .Where(a => channelIds.Contains(a.TicketChannelId))
+            .OrderBy(a => a.CreatedAt).ThenBy(a => a.Id)
+            .Select(a => new
+            {
+                a.TicketChannelId,
+                Dto = new TicketActivityDto(
+                    a.Id,
+                    a.Type,
+                    new UserRefDto(a.Actor.Id, a.Actor.DisplayName, a.Actor.AvatarUrl),
+                    a.CreatedAt,
+                    a.FromStatus,
+                    a.ToStatus,
+                    a.ChannelFile == null
+                        ? null
+                        : new FileRefDto(
+                            a.ChannelFile.StoredFileId,
+                            a.ChannelFile.StoredFile.FileName,
+                            a.ChannelFile.StoredFile.ContentType,
+                            a.ChannelFile.StoredFile.Size)),
+            })
+            .ToListAsync(ct);
+        var activitiesByChannel = activities.ToLookup(a => a.TicketChannelId, a => a.Dto);
+
+        var files = await _dbContext.ChannelFiles
+            .AsNoTracking()
+            .Where(cf => channelIds.Contains(cf.TicketChannelId) && !cf.IsDeleted)
+            .OrderBy(cf => cf.CreatedAt).ThenBy(cf => cf.Id)
+            .Select(cf => new
+            {
+                cf.TicketChannelId,
+                cf.StoredFileId,
+                cf.StoredFile.FileName,
+                cf.StoredFile.ContentType,
+                cf.StoredFile.Size,
+                cf.CreatedById,
+                cf.CreatedAt,
+                IsForwarded = cf.ForwardedFromChannelId != null,
+            })
+            .ToListAsync(ct);
+        // CreatedById has no navigation: resolve who added each file in one query.
+        var adderIds = files.Select(f => f.CreatedById).Distinct().ToList();
+        var adders = await _dbContext.Users
+            .AsNoTracking()
+            .Where(u => adderIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => new UserRefDto(u.Id, u.DisplayName, u.AvatarUrl), ct);
+        var filesByChannel = files.ToLookup(
+            f => f.TicketChannelId,
+            f => new ChannelFileDto(
+                f.StoredFileId, f.FileName, f.ContentType, f.Size,
+                adders.GetValueOrDefault(f.CreatedById) ?? new UserRefDto(f.CreatedById, "Unknown user", ""),
+                f.CreatedAt, f.IsForwarded));
+
         return new TicketDetailDto(
             header.Number,
             header.Title,
@@ -72,7 +126,13 @@ public partial class TicketManager
             header.CreatedAt,
             channels
                 .Select(ch => new TicketChannelDetailDto(
-                    ch.Id, ch.Status, ch.StatusChangedAt, ch.Participants, messagesByChannel[ch.Id].ToList()))
+                    ch.Id,
+                    ch.Status,
+                    ch.StatusChangedAt,
+                    ch.Participants,
+                    messagesByChannel[ch.Id].ToList(),
+                    activitiesByChannel[ch.Id].ToList(),
+                    filesByChannel[ch.Id].ToList()))
                 .ToList());
     }
 
@@ -164,26 +224,39 @@ public partial class TicketManager
     }
 
     /// <summary>New channel between two customers, with the first message authored by the user.</summary>
-    private static TicketChannel NewChannel(long sourceCustomerId, long targetCustomerId, string content, long userId) => new()
+    private static TicketChannel NewChannel(long sourceCustomerId, long targetCustomerId, string content, long userId)
     {
-        CreatedById = userId,
-        UpdatedAt = null,
-        Participants =
-        [
-            new ChannelParticipant { CustomerId = sourceCustomerId },
-            new ChannelParticipant { CustomerId = targetCustomerId },
-        ],
-        Messages =
-        [
-            new TicketMessage
-            {
-                AuthorId = userId,
-                Content = content,
-                CreatedById = userId,
-                UpdatedAt = null,
-            },
-        ],
-    };
+        var channel = NewEmptyChannel(sourceCustomerId, targetCustomerId, userId);
+        channel.Messages.Add(new TicketMessage
+        {
+            AuthorId = userId,
+            Content = content,
+            CreatedById = userId,
+            UpdatedAt = null,
+        });
+        return channel;
+    }
+
+    /// <summary>New channel between two customers, with its CHANNEL_OPENED activity (no message).</summary>
+    private static TicketChannel NewEmptyChannel(long sourceCustomerId, long targetCustomerId, long userId)
+    {
+        var now = DateTime.UtcNow;
+        return new TicketChannel
+        {
+            CreatedAt = now,
+            CreatedById = userId,
+            UpdatedAt = null,
+            Participants =
+            [
+                new ChannelParticipant { CustomerId = sourceCustomerId },
+                new ChannelParticipant { CustomerId = targetCustomerId },
+            ],
+            Activities =
+            [
+                new TicketActivity { Type = TicketActivityType.CHANNEL_OPENED, ActorId = userId, CreatedAt = now },
+            ],
+        };
+    }
 
     /// <summary>
     /// Message projection for <paramref name="userId"/>: the author's customer in the channel,

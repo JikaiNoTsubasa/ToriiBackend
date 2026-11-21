@@ -100,17 +100,8 @@ public partial class TicketManager
             return (existing, false);
 
         await EnsureCanSendAsync(sourceCustomerId, targetCustomerId, userId, ct);
-        var channel = new TicketChannel
-        {
-            TicketNumber = number,
-            CreatedById = userId,
-            UpdatedAt = null,
-            Participants =
-            [
-                new ChannelParticipant { CustomerId = sourceCustomerId },
-                new ChannelParticipant { CustomerId = targetCustomerId },
-            ],
-        };
+        var channel = NewEmptyChannel(sourceCustomerId, targetCustomerId, userId);
+        channel.TicketNumber = number;
         _dbContext.TicketChannels.Add(channel);
         return (channel, true);
     }

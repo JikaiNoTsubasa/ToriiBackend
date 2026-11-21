@@ -28,13 +28,51 @@ public record TicketDetailDto(
     DateTime CreatedAt,
     IReadOnlyList<TicketChannelDetailDto> Channels);
 
-/// <summary>Channel with its conversation (messages oldest first).</summary>
+/// <summary>
+/// Channel with its conversation: messages and activity events (both oldest first, merged by
+/// the client into one feed), and the files attached to it.
+/// </summary>
 public record TicketChannelDetailDto(
     long Id,
     TicketStatus Status,
     DateTime? StatusChangedAt,
     IReadOnlyList<ChannelParticipantDto> Participants,
-    IReadOnlyList<TicketMessageDto> Messages);
+    IReadOnlyList<TicketMessageDto> Messages,
+    IReadOnlyList<TicketActivityDto> Activities,
+    IReadOnlyList<ChannelFileDto> Files);
+
+/// <summary>File attached to a channel (<see cref="FileId"/> = the stored file, shared by forwards).</summary>
+public record ChannelFileDto(
+    long FileId,
+    string FileName,
+    string ContentType,
+    long Size,
+    UserRefDto AddedBy,
+    DateTime AddedAt,
+    bool IsForwarded);
+
+/// <summary>File reference shown in an activity event.</summary>
+public record FileRefDto(long FileId, string FileName, string ContentType, long Size);
+
+/// <summary>Activity event of a channel: who did what and when (fields depend on <see cref="Type"/>).</summary>
+public record TicketActivityDto(
+    long Id,
+    TicketActivityType Type,
+    UserRefDto Actor,
+    DateTime CreatedAt,
+    TicketStatus? FromStatus,
+    TicketStatus? ToStatus,
+    FileRefDto? File);
+
+/// <summary>
+/// Forwards a file of the ticket (only its id is linked, the content is not copied) to an
+/// existing channel (<see cref="TargetChannelId"/>) or to the channel between
+/// <see cref="SourceCustomerId"/> and <see cref="TargetCustomerId"/> (reused or created).
+/// </summary>
+public record ForwardFileRequest(long? TargetChannelId, long? SourceCustomerId, long? TargetCustomerId);
+
+/// <summary>Result of a file forward: the channel it landed in, and whether that channel was created.</summary>
+public record ForwardFileResultDto(long ChannelId, bool ChannelCreated);
 
 /// <summary>
 /// Message of a channel. <see cref="AuthorCustomerName"/> = the author's customer in this

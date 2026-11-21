@@ -4,12 +4,18 @@ using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Torii.Api.Data;
 using Torii.Api.Dtos;
+using Microsoft.Extensions.Options;
 using Torii.Api.Exceptions;
 using Torii.Api.Models;
+using Torii.Api.Services;
 
 namespace Torii.Api.Managers;
 
-public partial class TicketManager(ToriiDbContext db, TicketEdgeManager edges) : ToriManager(db)
+public partial class TicketManager(
+    ToriiDbContext db,
+    TicketEdgeManager edges,
+    IFileStorage storage,
+    IOptions<FileStorageOptions> storageOptions) : ToriManager(db)
 {
     /// <summary>
     /// Visibility rule, to reuse for every ticket access (list, details,
@@ -112,6 +118,15 @@ public partial class TicketManager(ToriiDbContext db, TicketEdgeManager edges) :
         if (channel.Status != status)
         {
             var now = DateTime.UtcNow;
+            _dbContext.TicketActivities.Add(new TicketActivity
+            {
+                TicketChannelId = channel.Id,
+                Type = TicketActivityType.STATUS_CHANGED,
+                ActorId = userId,
+                CreatedAt = now,
+                FromStatus = channel.Status,
+                ToStatus = status,
+            });
             channel.Status = status;
             channel.StatusChangedAt = now;
             channel.StatusChangedById = userId;
