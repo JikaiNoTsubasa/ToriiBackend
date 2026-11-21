@@ -79,34 +79,9 @@ public partial class TicketManager(ToriiDbContext db, TicketEdgeManager edges) :
         if (errors.Count > 0)
             throw new ValidationException(errors);
 
-        var isMember = await _dbContext.Customers.AnyAsync(c =>
-            c.Id == request.SourceCustomerId && !c.IsDeleted && c.Members.Any(u => u.Id == userId), ct);
-        if (!isMember)
-            throw new ForbiddenException("You are not a member of the source customer.");
+        await EnsureCanSendAsync(request.SourceCustomerId, request.TargetCustomerId, userId, ct);
 
-        if (!await edges.CanSendAsync(request.SourceCustomerId, request.TargetCustomerId, ct))
-            throw new ForbiddenException("The source customer is not allowed to send tickets to this customer.");
-
-        var channel = new TicketChannel
-        {
-            CreatedById = userId,
-            UpdatedAt = null,
-            Participants =
-            [
-                new ChannelParticipant { CustomerId = request.SourceCustomerId },
-                new ChannelParticipant { CustomerId = request.TargetCustomerId },
-            ],
-            Messages =
-            [
-                new TicketMessage
-                {
-                    AuthorId = userId,
-                    Content = request.Content,
-                    CreatedById = userId,
-                    UpdatedAt = null,
-                },
-            ],
-        };
+        var channel = NewChannel(request.SourceCustomerId, request.TargetCustomerId, request.Content, userId);
         var ticket = new Ticket { Title = title, CreatedById = userId, Channels = [channel] };
 
         _dbContext.Tickets.Add(ticket);

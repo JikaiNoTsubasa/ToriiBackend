@@ -35,7 +35,7 @@ Copy `Torii.Api/appsettings.example.json` to `Torii.Api/appsettings.json`
 Migrations live in `Torii.Api/Migrations` (`InitialCreate`, `AddUserRole`,
 `AddedAccountType`, `AddTicket`, `AddedCustomers`, `AddTicketChannels`, `AddedTicketTitle`,
 `AddTicketEdges`, `AddTicketMessages`, `ReleaseDeletedUserEmails`, `AddTicketCreator`,
-`AddChannelStatus`):
+`AddChannelStatus`, `AddMessageForward`):
 
 ```bash
 cd Torii.Api
@@ -116,7 +116,23 @@ curl -X POST http://localhost:5080/api/auth/register \
 | POST   | `/api/tickets`              | Create `{ sourceCustomerId, targetCustomerId, title, content }` | **Bearer** |
 | PUT    | `/api/tickets/{number}/channels/{channelId}/status` | Change a channel's status `{ status }` (404 if not a participant) | **Bearer** |
 
-The list only returns the channels the user takes part in.
+| GET    | `/api/tickets/{number}`     | Details: the user's channels with their messages (404 if none) | **Bearer** |
+| POST   | `/api/tickets/{number}/channels/{channelId}/messages` | Reply in a channel `{ content }` (participants only) | **Bearer** |
+| POST   | `/api/tickets/{number}/channels/{channelId}/messages/{messageId}/forward` | Forward a message `{ targetChannelId }` or `{ sourceCustomerId, targetCustomerId }` (+ optional `comment`) | **Bearer** |
+| POST   | `/api/tickets/{number}/channels` | Open a channel `{ sourceCustomerId, targetCustomerId, content }` (edge required; 409 if these customers are already linked) | **Bearer** |
+
+The list and the details only return the channels the user takes part in: the same ticket
+looks different depending on who reads it (e.g. a channel opened between Globex and a
+subcontractor is invisible to the original requester). Each message tells its author's
+customer in the channel, `isMine` and `isOwnSide` (written by the user's side).
+
+Forwarding (`TicketManager.ForwardMessageAsync`) copies a message the user sees into another
+channel of the same ticket: an existing channel of the user, or the channel between one of
+their customers and a target customer — reused when it exists (no edge needed, like a reply),
+created otherwise (active edge required). The forward is a new message by the user whose
+`Content` is the optional comment and `ForwardedFromId` links the root original (forwarding
+a forward without comment points to the original, never a chain). Its DTO carries the
+original in `forwarded` (author, author's customer, date, content).
 
 ### Statuses (per channel)
 

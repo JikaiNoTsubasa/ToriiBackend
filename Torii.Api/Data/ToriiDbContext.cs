@@ -132,6 +132,12 @@ public class ToriiDbContext(DbContextOptions<ToriiDbContext> options) : DbContex
                   .WithMany()
                   .HasForeignKey(m => m.AuthorId)
                   .OnDelete(DeleteBehavior.Restrict);
+
+            // Forward: the copy survives the hard deletion of the original's channel (link cleared).
+            entity.HasOne(m => m.ForwardedFrom)
+                  .WithMany()
+                  .HasForeignKey(m => m.ForwardedFromId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
 
         // Always last: covers the enums of every entity declared above.

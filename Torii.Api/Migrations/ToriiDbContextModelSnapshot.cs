@@ -284,6 +284,9 @@ namespace Torii.Api.Migrations
                     b.Property<long?>("DeletedById")
                         .HasColumnType("bigint");
 
+                    b.Property<long?>("ForwardedFromId")
+                        .HasColumnType("bigint");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -302,6 +305,8 @@ namespace Torii.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AuthorId");
+
+                    b.HasIndex("ForwardedFromId");
 
                     b.HasIndex("TicketChannelId", "CreatedAt");
 
@@ -469,6 +474,11 @@ namespace Torii.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Torii.Api.Models.TicketMessage", "ForwardedFrom")
+                        .WithMany()
+                        .HasForeignKey("ForwardedFromId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Torii.Api.Models.TicketChannel", "TicketChannel")
                         .WithMany("Messages")
                         .HasForeignKey("TicketChannelId")
@@ -476,6 +486,8 @@ namespace Torii.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Author");
+
+                    b.Navigation("ForwardedFrom");
 
                     b.Navigation("TicketChannel");
                 });
