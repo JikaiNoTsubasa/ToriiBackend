@@ -1,0 +1,98 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build-api",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "${workspaceFolder}/Torii.Api/Torii.Api.csproj",
+        "/property:GenerateFullPaths=true",
+        "/consoleloggerparameters:NoSummary"
+      ],
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "watch-api",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "watch",
+        "run",
+        "--launch-profile",
+        "http"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/Torii.Api"
+      },
+      "isBackground": true,
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "ef: add migration",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "ef",
+        "migrations",
+        "add",
+        "${input:migrationName}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/Torii.Api"
+      },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "ef: update database",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "ef",
+        "database",
+        "update"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/Torii.Api"
+      },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "ef: list migrations",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "ef",
+        "migrations",
+        "list"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/Torii.Api"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "ef: remove last migration",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "ef",
+        "migrations",
+        "remove"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/Torii.Api"
+      },
+      "problemMatcher": "$msCompile"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "migrationName",
+      "type": "promptString",
+      "description": "Nom de la migration EF Core (ex: AddProjectEntity)"
+    }
+  ]
+}

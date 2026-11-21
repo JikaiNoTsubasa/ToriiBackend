@@ -1,0 +1,22 @@
+# ---------- .NET ----------
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+.vs/
+project.lock.json
+artifacts/
+
+# ASP.NET secrets locaux (ne jamais committer les vraies valeurs)
+appsettings.*.local.json
+appsettings.json
+
+# Coverage / tests
+coverage/
+TestResults/
+
+# ---------- Éditeurs / OS ----------
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
