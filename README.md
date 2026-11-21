@@ -211,6 +211,22 @@ Message content is HTML from the rich text editor: Angular sanitizes it when ren
 with `[innerHTML]`, but sanitize it on the backend before any use outside the app
 (emails, exports).
 
+## Notifications
+
+In-app notifications (`Notifications` table, `NotificationManager`). A message posted or
+forwarded into a channel notifies every active member of the channel's customers except its
+author. Unread notifications are **coalesced per channel** (`Count`, latest actor / message /
+date) instead of piling up; replying in a channel marks the author's own notification of it
+read. A notification is only listed while its channel is still visible to the recipient.
+
+| Method | Route | Description |
+|---|---|---|
+| GET | `/api/notifications?unreadOnly=&take=` | Latest notifications (newest first, 20 by default, 50 max) + unread total |
+| GET | `/api/notifications/unread` | `{ count, latestAt }` — cheap, polled by the UI |
+| POST | `/api/notifications/{id}/read` | Marks one read |
+| POST | `/api/notifications/channels/{channelId}/read` | Marks a channel's notifications read (sent when it is viewed) |
+| POST | `/api/notifications/read-all` | Marks everything read |
+
 ## Administration (ADMIN role)
 
 Controllers in `Controllers/Admin/*`, protected by `[Authorize(Roles = nameof(UserRole.ADMIN))]`.

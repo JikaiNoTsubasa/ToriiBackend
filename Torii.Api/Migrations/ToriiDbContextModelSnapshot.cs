@@ -147,6 +147,58 @@ namespace Torii.Api.Migrations
                     b.ToTable("Customers");
                 });
 
+            modelBuilder.Entity("Torii.Api.Models.Notification", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("ActorId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("LastMessageId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("TicketChannelId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("TicketNumber")
+                        .IsRequired()
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorId");
+
+                    b.HasIndex("LastMessageId");
+
+                    b.HasIndex("TicketNumber");
+
+                    b.HasIndex("TicketChannelId", "ReadAt");
+
+                    b.HasIndex("UserId", "ReadAt", "CreatedAt");
+
+                    b.ToTable("Notifications");
+                });
+
             modelBuilder.Entity("Torii.Api.Models.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -613,6 +665,49 @@ namespace Torii.Api.Migrations
                     b.Navigation("Customer");
 
                     b.Navigation("TicketChannel");
+                });
+
+            modelBuilder.Entity("Torii.Api.Models.Notification", b =>
+                {
+                    b.HasOne("Torii.Api.Models.User", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Torii.Api.Models.TicketMessage", "LastMessage")
+                        .WithMany()
+                        .HasForeignKey("LastMessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Torii.Api.Models.TicketChannel", "TicketChannel")
+                        .WithMany()
+                        .HasForeignKey("TicketChannelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Torii.Api.Models.Ticket", "Ticket")
+                        .WithMany()
+                        .HasForeignKey("TicketNumber")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Torii.Api.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Actor");
+
+                    b.Navigation("LastMessage");
+
+                    b.Navigation("Ticket");
+
+                    b.Navigation("TicketChannel");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Torii.Api.Models.RefreshToken", b =>

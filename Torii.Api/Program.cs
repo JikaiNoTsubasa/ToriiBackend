@@ -32,6 +32,7 @@ builder.Services.AddScoped<CustomerManager>();
 builder.Services.AddScoped<UserManager>();
 builder.Services.AddScoped<TicketEdgeManager>();
 builder.Services.AddScoped<ProfileManager>();
+builder.Services.AddScoped<NotificationManager>();
 builder.Services.AddSingleton<IFileStorage, DiskFileStorage>();
 
 // --- JWT Bearer authentication ---

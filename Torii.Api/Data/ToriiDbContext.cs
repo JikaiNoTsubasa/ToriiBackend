@@ -19,6 +19,7 @@ public class ToriiDbContext(DbContextOptions<ToriiDbContext> options) : DbContex
     public DbSet<StoredFile> StoredFiles => Set<StoredFile>();
     public DbSet<ChannelFile> ChannelFiles => Set<ChannelFile>();
     public DbSet<TicketActivity> TicketActivities => Set<TicketActivity>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     /// <summary>Ticket number sequence (TI000001, TI000002…).</summary>
     public const string TicketNumberSequence = "TicketNumbers";
@@ -187,6 +188,35 @@ public class ToriiDbContext(DbContextOptions<ToriiDbContext> options) : DbContex
                   .WithMany()
                   .HasForeignKey(a => a.ChannelFileId)
                   .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            // Unread list / count of a user, newest first.
+            entity.HasIndex(n => new { n.UserId, n.ReadAt, n.CreatedAt });
+            // Coalescing lookup when a message is posted.
+            entity.HasIndex(n => new { n.TicketChannelId, n.ReadAt });
+
+            entity.HasOne(n => n.User)
+                  .WithMany()
+                  .HasForeignKey(n => n.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(n => n.Ticket)
+                  .WithMany()
+                  .HasForeignKey(n => n.TicketNumber)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(n => n.TicketChannel)
+                  .WithMany()
+                  .HasForeignKey(n => n.TicketChannelId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(n => n.LastMessage)
+                  .WithMany()
+                  .HasForeignKey(n => n.LastMessageId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(n => n.Actor)
+                  .WithMany()
+                  .HasForeignKey(n => n.ActorId)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
 
         // Always last: covers the enums of every entity declared above.

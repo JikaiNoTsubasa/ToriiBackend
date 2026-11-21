@@ -174,6 +174,7 @@ public partial class TicketManager
         channel.UpdatedAt = now;
         channel.UpdatedById = userId;
         await _dbContext.SaveChangesAsync(ct);
+        await notifications.NotifyMessageAsync(number, channel.Id, message.Id, userId, ct);
 
         return await _dbContext.TicketMessages
             .AsNoTracking()

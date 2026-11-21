@@ -15,7 +15,8 @@ public partial class TicketManager(
     ToriiDbContext db,
     TicketEdgeManager edges,
     IFileStorage storage,
-    IOptions<FileStorageOptions> storageOptions) : ToriManager(db)
+    IOptions<FileStorageOptions> storageOptions,
+    NotificationManager notifications) : ToriManager(db)
 {
     /// <summary>
     /// Visibility rule, to reuse for every ticket access (list, details,

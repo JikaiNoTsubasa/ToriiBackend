@@ -67,6 +67,7 @@ public partial class TicketManager
             target.UpdatedById = userId;
         }
         await _dbContext.SaveChangesAsync(ct);
+        await notifications.NotifyMessageAsync(number, target.Id, forward.Id, userId, ct);
 
         var dto = await _dbContext.TicketMessages
             .AsNoTracking()
