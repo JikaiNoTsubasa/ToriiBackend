@@ -29,15 +29,16 @@ public class TicketEdgeManager(ToriiDbContext db) : ToriManager(db)
                 e.IsActive, e.CreatedAt, e.UpdatedAt))
             .ToListAsync(ct);
 
+    /// <summary>Edges that currently allow sending tickets (live and active).</summary>
+    public IQueryable<TicketEdge> QuerySendable() => Live.Where(e => e.IsActive);
+
     /// <summary>
     /// Whether <paramref name="sourceCustomerId"/> may send tickets to
     /// <paramref name="targetCustomerId"/> (an active live edge exists).
-    /// To use when creating tickets.
     /// </summary>
     public Task<bool> CanSendAsync(long sourceCustomerId, long targetCustomerId, CancellationToken ct = default)
-        => Live.AnyAsync(e => e.IsActive
-                              && e.SourceCustomerId == sourceCustomerId
-                              && e.TargetCustomerId == targetCustomerId, ct);
+        => QuerySendable().AnyAsync(e => e.SourceCustomerId == sourceCustomerId
+                                         && e.TargetCustomerId == targetCustomerId, ct);
 
     public async Task<TicketEdgeDto> CreateAsync(TicketEdgeCreateRequest request, long actorId, CancellationToken ct = default)
     {

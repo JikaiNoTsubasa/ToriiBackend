@@ -239,6 +239,57 @@ namespace Torii.Api.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Torii.Api.Models.TicketMessage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("AuthorId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("CreatedById")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("DeletedById")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<long>("TicketChannelId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("UpdatedById")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorId");
+
+                    b.HasIndex("TicketChannelId", "CreatedAt");
+
+                    b.ToTable("TicketMessages");
+                });
+
             modelBuilder.Entity("Torii.Api.Models.User", b =>
                 {
                     b.Property<long>("Id")
@@ -382,6 +433,25 @@ namespace Torii.Api.Migrations
                     b.Navigation("TargetCustomer");
                 });
 
+            modelBuilder.Entity("Torii.Api.Models.TicketMessage", b =>
+                {
+                    b.HasOne("Torii.Api.Models.User", "Author")
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Torii.Api.Models.TicketChannel", "TicketChannel")
+                        .WithMany("Messages")
+                        .HasForeignKey("TicketChannelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Author");
+
+                    b.Navigation("TicketChannel");
+                });
+
             modelBuilder.Entity("Torii.Api.Models.Customer", b =>
                 {
                     b.Navigation("ChannelParticipations");
@@ -394,6 +464,8 @@ namespace Torii.Api.Migrations
 
             modelBuilder.Entity("Torii.Api.Models.TicketChannel", b =>
                 {
+                    b.Navigation("Messages");
+
                     b.Navigation("Participants");
                 });
 

@@ -10,4 +10,7 @@ public class TicketChannel : Entity
     public Ticket Ticket { get; set; } = null!;
 
     public ICollection<ChannelParticipant> Participants { get; set; } = [];
+
+    /// <summary>Messages exchanged in the channel, oldest first by <c>CreatedAt</c>.</summary>
+    public ICollection<TicketMessage> Messages { get; set; } = [];
 }

@@ -15,6 +15,7 @@ public class ToriiDbContext(DbContextOptions<ToriiDbContext> options) : DbContex
     public DbSet<ChannelParticipant> ChannelParticipants => Set<ChannelParticipant>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<TicketEdge> TicketEdges => Set<TicketEdge>();
+    public DbSet<TicketMessage> TicketMessages => Set<TicketMessage>();
 
     /// <summary>Ticket number sequence (TI000001, TI000002…).</summary>
     public const string TicketNumberSequence = "TicketNumbers";
@@ -109,6 +110,22 @@ public class ToriiDbContext(DbContextOptions<ToriiDbContext> options) : DbContex
             entity.HasOne(e => e.TargetCustomer)
                   .WithMany()
                   .HasForeignKey(e => e.TargetCustomerId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TicketMessage>(entity =>
+        {
+            entity.HasIndex(m => new { m.TicketChannelId, m.CreatedAt });
+
+            entity.HasOne(m => m.TicketChannel)
+                  .WithMany(ch => ch.Messages)
+                  .HasForeignKey(m => m.TicketChannelId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            // Restrict: a user who authored messages cannot be hard-deleted.
+            entity.HasOne(m => m.Author)
+                  .WithMany()
+                  .HasForeignKey(m => m.AuthorId)
                   .OnDelete(DeleteBehavior.Restrict);
         });
 
