@@ -14,6 +14,9 @@ appsettings.json
 # Uploaded files (Storage:Path)
 storage/
 
+# Serilog rolling files
+logs/
+
 # Coverage / tests
 coverage/
 TestResults/

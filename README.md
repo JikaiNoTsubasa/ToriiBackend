@@ -11,6 +11,22 @@ The Angular frontend lives in the separate **ToriiFrontend** repository.
 - **EF Core** + **PostgreSQL** (Npgsql)
 - **Auth**: JWT access token + refresh token (rotated on every use), BCrypt passwords
 - **Errors**: normalized ProblemDetails responses (RFC 9457)
+- **Logging**: Serilog — colored console + rolling files (`Torii.Api/logs/`)
+
+## Logging
+
+Set up in `Torii.Api/Logging/LoggingExtensions.cs` (sinks and templates are in code, so the
+API logs even without configuration):
+
+- **Console**: `[HH:mm:ss LVL] Source: message`;
+- **Files**: `logs/torii-YYYYMMDD.log` under the content root, with full date and offset;
+  a new file every day or at 10 MB, the last 14 are kept (ignored by git);
+- **Requests**: one line per HTTP request (method, path, status, duration);
+  4xx → warning, 5xx → error;
+- **EF Core** is silenced (no SQL); database errors are still logged by `GlobalExceptionHandler`.
+
+Levels are tuned in the `Serilog:MinimumLevel` section of `appsettings*.json`
+(`Torii` is at `Debug` in Development).
 
 ## Prerequisites
 
