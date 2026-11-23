@@ -17,4 +17,7 @@ public abstract class ToriiException(string message, Exception? innerException =
 
     /// <summary>Optional validation errors (field name → messages).</summary>
     public virtual IReadOnlyDictionary<string, string[]>? Errors => null;
+
+    /// <summary>Optional machine-readable code, for clients reacting to a specific case.</summary>
+    public virtual string? Code => null;
 }

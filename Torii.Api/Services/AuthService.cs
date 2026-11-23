@@ -2,30 +2,68 @@ using Microsoft.EntityFrameworkCore;
 using Torii.Api.Data;
 using Torii.Api.Dtos;
 using Torii.Api.Exceptions;
+using Torii.Api.Managers;
 using Torii.Api.Models;
 
 namespace Torii.Api.Services;
 
-public class AuthService(ToriiDbContext db, ITokenService tokens) : IAuthService
+public class AuthService(
+    ToriiDbContext db,
+    ITokenService tokens,
+    NotificationManager notifications,
+    ILogger<AuthService> logger) : IAuthService
 {
-    public async Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken ct = default)
+    public Task<RegistrationResponse> RegisterAsync(RegisterRequest request, CancellationToken ct = default)
+        => RequestAccountAsync(
+            new AccountRequest(request.Email, request.DisplayName, request.Position,
+                BCrypt.Net.BCrypt.HashPassword(request.Password), AccountType.APPLICATION),
+            ct);
+
+    public async Task<RegistrationResponse> RequestAccountAsync(AccountRequest request, CancellationToken ct = default)
     {
         var email = request.Email.Trim().ToLowerInvariant();
+        var displayName = request.DisplayName.Trim();
+        if (displayName.Length == 0)
+            throw new ValidationException(new Dictionary<string, string[]>
+            {
+                ["displayName"] = ["Display name is required."],
+            });
 
         if (await db.Users.AnyAsync(u => u.Email == email, ct))
             throw new ConflictException("An account already exists with this email.");
+        if (request.SingpassSubject is not null &&
+            await db.Users.AnyAsync(u => u.SingpassSubject == request.SingpassSubject, ct))
+            throw new ConflictException("An account is already linked to this Singpass account.");
 
         var user = new User
         {
             Email = email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-            DisplayName = request.DisplayName.Trim(),
+            PasswordHash = request.PasswordHash,
+            DisplayName = displayName,
+            Position = User.NormalizePosition(request.Position),
+            AccountType = request.AccountType,
+            SingpassSubject = request.SingpassSubject,
+            Status = AccountStatus.PENDING,
+            IsActive = false,
+            UpdatedAt = null,
         };
 
         db.Users.Add(user);
         await db.SaveChangesAsync(ct);
+        await notifications.NotifyAccountRequestAsync(user.Id, ct);
 
-        return await IssueTokensAsync(user, ct);
+        logger.LogInformation("Account requested ({AccountType}): {Email} (user {UserId}).",
+            user.AccountType, email, user.Id);
+        return new RegistrationResponse(user.Email, user.Status);
+    }
+
+    public Task<AuthResponse> SignInAsync(User user, CancellationToken ct = default)
+    {
+        if (user.Status != AccountStatus.ACTIVE)
+            throw new AccountNotActiveException(user.Status);
+        if (!user.IsActive || user.IsDeleted)
+            throw new AuthenticationException("This account is disabled.");
+        return IssueTokensAsync(user, ct);
     }
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken ct = default)
@@ -33,7 +71,13 @@ public class AuthService(ToriiDbContext db, ITokenService tokens) : IAuthService
         var email = request.Email.Trim().ToLowerInvariant();
         var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
 
-        if (user is null || !user.IsActive || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        if (user is null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            throw new AuthenticationException("Invalid email or password.");
+
+        // Only revealed once the password is verified: no way to probe who has requested an account.
+        if (user.Status != AccountStatus.ACTIVE)
+            throw new AccountNotActiveException(user.Status);
+        if (!user.IsActive)
             throw new AuthenticationException("Invalid email or password.");
 
         return await IssueTokensAsync(user, ct);

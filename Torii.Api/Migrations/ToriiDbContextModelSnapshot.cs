@@ -164,17 +164,16 @@ namespace Torii.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<long>("LastMessageId")
+                    b.Property<long?>("LastMessageId")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime?>("ReadAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<long>("TicketChannelId")
+                    b.Property<long?>("TicketChannelId")
                         .HasColumnType("bigint");
 
                     b.Property<string>("TicketNumber")
-                        .IsRequired()
                         .HasColumnType("character varying(16)");
 
                     b.Property<string>("Type")
@@ -229,6 +228,51 @@ namespace Torii.Api.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("RefreshTokens");
+                });
+
+            modelBuilder.Entity("Torii.Api.Models.SingpassConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ClientId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("EncryptionKeyJwk")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Environment")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("KeysGeneratedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RedirectUri")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("Scopes")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("SigningKeyJwk")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("UpdatedById")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SingpassConfigs");
                 });
 
             modelBuilder.Entity("Torii.Api.Models.StoredFile", b =>
@@ -600,6 +644,14 @@ namespace Torii.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("SingpassSubject")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -610,6 +662,10 @@ namespace Torii.Api.Migrations
 
                     b.HasIndex("Email")
                         .IsUnique();
+
+                    b.HasIndex("SingpassSubject")
+                        .IsUnique()
+                        .HasFilter("\"SingpassSubject\" IS NOT NULL");
 
                     b.ToTable("Users");
                 });
@@ -678,20 +734,17 @@ namespace Torii.Api.Migrations
                     b.HasOne("Torii.Api.Models.TicketMessage", "LastMessage")
                         .WithMany()
                         .HasForeignKey("LastMessageId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("Torii.Api.Models.TicketChannel", "TicketChannel")
                         .WithMany()
                         .HasForeignKey("TicketChannelId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("Torii.Api.Models.Ticket", "Ticket")
                         .WithMany()
                         .HasForeignKey("TicketNumber")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("Torii.Api.Models.User", "User")
                         .WithMany()

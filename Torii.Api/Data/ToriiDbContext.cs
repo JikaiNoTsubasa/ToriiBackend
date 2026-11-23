@@ -20,6 +20,7 @@ public class ToriiDbContext(DbContextOptions<ToriiDbContext> options) : DbContex
     public DbSet<ChannelFile> ChannelFiles => Set<ChannelFile>();
     public DbSet<TicketActivity> TicketActivities => Set<TicketActivity>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<SingpassConfig> SingpassConfigs => Set<SingpassConfig>();
 
     /// <summary>Ticket number sequence (TI000001, TI000002…).</summary>
     public const string TicketNumberSequence = "TicketNumbers";
@@ -38,6 +39,8 @@ public class ToriiDbContext(DbContextOptions<ToriiDbContext> options) : DbContex
             entity.Property(u => u.DisplayName).HasMaxLength(128);
             entity.Property(u => u.Position).HasMaxLength(128);
             entity.Property(u => u.AccountType).HasDefaultValue(AccountType.APPLICATION);
+            entity.Property(u => u.SingpassSubject).HasMaxLength(64);
+            entity.HasIndex(u => u.SingpassSubject).IsUnique().HasFilter("\"SingpassSubject\" IS NOT NULL");
         });
 
         modelBuilder.Entity<RefreshToken>(entity =>
@@ -217,6 +220,14 @@ public class ToriiDbContext(DbContextOptions<ToriiDbContext> options) : DbContex
                   .WithMany()
                   .HasForeignKey(n => n.ActorId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SingpassConfig>(entity =>
+        {
+            entity.Property(c => c.Id).ValueGeneratedNever();
+            entity.Property(c => c.ClientId).HasMaxLength(64);
+            entity.Property(c => c.RedirectUri).HasMaxLength(512);
+            entity.Property(c => c.Scopes).HasMaxLength(256);
         });
 
         // Always last: covers the enums of every entity declared above.

@@ -27,6 +27,12 @@ public class User: Entity
     /// <summary>Application role; accounts created through /register are USER.</summary>
     public UserRole Role { get; set; } = UserRole.USER;
 
+    /// <summary>
+    /// Approval state; accounts created through /register start PENDING (and disabled) until an
+    /// administrator approves them. Signing in needs ACTIVE and <see cref="Entity.IsActive"/>.
+    /// </summary>
+    public AccountStatus Status { get; set; } = AccountStatus.ACTIVE;
+
     /// <summary>Refresh tokens issued to this user.</summary>
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
 
@@ -46,5 +52,12 @@ public class User: Entity
     public string? AvatarStorageKey { get; set; }
     public string? AvatarContentType { get; set; }
 
-    public AccountType AccountType = AccountType.APPLICATION;
+    /// <summary>How the user signs in: email + password, or an external provider (Singpass).</summary>
+    public AccountType AccountType { get; set; } = AccountType.APPLICATION;
+
+    /// <summary>
+    /// Singpass <c>sub</c> (user UUID) of a SINGPASS account (unique); cleared when the account
+    /// is deleted, so the person can request a new one.
+    /// </summary>
+    public string? SingpassSubject { get; set; }
 }

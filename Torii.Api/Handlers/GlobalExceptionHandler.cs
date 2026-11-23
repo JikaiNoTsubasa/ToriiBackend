@@ -51,6 +51,8 @@ public sealed class GlobalExceptionHandler(
 
         if (ex.Errors is not null)
             problem.Extensions["errors"] = ex.Errors;
+        if (ex.Code is not null)
+            problem.Extensions["code"] = ex.Code;
 
         return problem;
     }

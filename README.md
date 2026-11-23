@@ -52,7 +52,7 @@ Migrations live in `Torii.Api/Migrations` (`InitialCreate`, `AddUserRole`,
 `AddedAccountType`, `AddTicket`, `AddedCustomers`, `AddTicketChannels`, `AddedTicketTitle`,
 `AddTicketEdges`, `AddTicketMessages`, `ReleaseDeletedUserEmails`, `AddTicketCreator`,
 `AddChannelStatus`, `AddMessageForward`, `AddChannelFilesAndActivities`, `AddUserAvatar`,
-`AddTicketTypeAndPriority`):
+`AddTicketTypeAndPriority`, `AddAccountApproval`, `AddSingpass`):
 
 ```bash
 cd Torii.Api
@@ -98,7 +98,7 @@ Endpoints (`Controllers/AuthController.cs`, `/api/auth` prefix):
 
 | Method | Route       | Description                              | Auth       |
 |--------|-------------|------------------------------------------|------------|
-| POST   | `/register` | Creates an account, returns the tokens   | no         |
+| POST   | `/register` | Requests an account (202, no tokens)     | no         |
 | POST   | `/login`    | Signs in, returns the tokens             | no         |
 | POST   | `/refresh`  | Exchanges a refresh token for new tokens | no         |
 | POST   | `/logout`   | Revokes a refresh token                  | no         |
@@ -107,8 +107,65 @@ Endpoints (`Controllers/AuthController.cs`, `/api/auth` prefix):
 ```bash
 curl -X POST http://localhost:5080/api/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"email":"a@b.co","password":"password123","displayName":"Alice"}'
+  -d '{"email":"a@b.co","password":"password123","displayName":"Alice","position":"PM"}'
 ```
+
+### Account requests (sign-up with approval)
+
+`/register` creates a `PENDING`, disabled account (`User.Status`, `AccountStatus` enum) and
+sends an `ACCOUNT_REQUESTED` in-app notification to every active administrator. No session
+is issued. Signing in with valid credentials of a pending or declined account answers
+**403** with a `code` extension (`ACCOUNT_PENDING` / `ACCOUNT_REJECTED`); the status is only
+revealed once the password is verified.
+
+Administrators review the requests (`Controllers/Admin/AdminAccountRequestController.cs`,
+`/api/admin/account-requests` prefix, **ADMIN**):
+
+| Method | Route           | Description |
+|--------|-----------------|-------------|
+| GET    | `/`             | Pending requests, oldest first |
+| GET    | `/count`        | Number of pending requests (menu badge) |
+| POST   | `/{id}/approve` | Activates the account (`ACTIVE`) |
+| POST   | `/{id}/reject`  | Marks it `REJECTED` (stays disabled, keeps its email) |
+
+Singpass account requests (below) go through the same review, flagged `accountType: SINGPASS`.
+Either decision removes the request's notifications; deciding a request that is no longer
+pending answers 404. Pending accounts are not listed in `/api/admin/users`; declined ones
+are (`status: REJECTED`), and enabling one there approves it. Deleting it frees the email.
+
+## Singpass (sign-in and account requests)
+
+Singpass Login following the **FAPI 2.0** specification (mandatory for apps registered after
+February 2026): Pushed Authorization Request + PKCE (S256), `private_key_jwt` client assertions
+(ES256, `aud` = issuer), DPoP proofs bound to an ephemeral key per sign-in, and an ID token
+encrypted with our key (JWE `ECDH-ES+A256KW` / `A256CBC-HS512`, opened with **jose-jwt**,
+since Microsoft.IdentityModel 8 cannot unwrap ECDH-ES) and signed by Singpass (ES256, checked
+against their JWKS).
+
+Flow (`Services/Singpass/`):
+
+1. `POST /api/auth/singpass/start` pushes the authorization request and returns the Singpass
+   URL; the attempt (state, nonce, PKCE verifier, DPoP key) is kept **in memory** 10 minutes.
+2. Singpass sends the browser back to the frontend's `/auth/singpass/callback`, which posts
+   `{ code, state, iss, error }` to `POST /api/auth/singpass/callback`.
+3. The `sub` (Singpass UUID) is looked up in `Users.SingpassSubject`: a linked, approved
+   account is signed in (`SIGNED_IN` + tokens); pending / declined → the usual 403
+   (`ACCOUNT_PENDING` / `ACCOUNT_REJECTED`); unknown → `REGISTRATION_REQUIRED` with a single-use
+   token (15 min) and the name / email Singpass gave (scopes `name`, `email`).
+4. `POST /api/auth/singpass/register` `{ token, email, displayName, position }` creates a
+   PENDING `SINGPASS` account (no usable password) reviewed in the account requests.
+
+Settings (`SingpassConfigs` table, single row) are edited by administrators
+(`/api/admin/singpass`, **ADMIN**): `GET`, `PUT` (enabled, environment STAGING / PRODUCTION,
+client id, redirect URI, scopes), `POST /keys` (new signing + encryption keys) and
+`POST /test` (reads the discovery document). **Enabled** greys out / enables the Singpass
+buttons; it can only be turned on once the client id, redirect URI and keys are set. The
+private keys never leave the server; register the public **JWKS URL**
+`/api/auth/singpass/jwks` (anonymous, must be publicly reachable) and the redirect URI in the
+Singpass Developer Portal.
+
+> In Development, `Singpass:IssuerOverride` points the client to a local mock issuer.
+> Deleting a SINGPASS account clears its `SingpassSubject`, so the person can request again.
 
 ## Profile
 

@@ -11,6 +11,7 @@ using Torii.Api.Json;
 using Torii.Api.Logging;
 using Torii.Api.Managers;
 using Torii.Api.Services;
+using Torii.Api.Services.Singpass;
 
 // Console logger until the host is built, so startup failures are logged too.
 Log.Logger = LoggingExtensions.CreateBootstrapLogger();
@@ -43,6 +44,13 @@ try
     builder.Services.AddScoped<TicketEdgeManager>();
     builder.Services.AddScoped<ProfileManager>();
     builder.Services.AddScoped<NotificationManager>();
+    builder.Services.AddScoped<AccountRequestManager>();
+
+    // --- Singpass (FAPI 2.0): sign-in attempts are kept in memory ---
+    builder.Services.AddMemoryCache();
+    builder.Services.AddHttpClient<SingpassClient>(client => client.Timeout = TimeSpan.FromSeconds(15));
+    builder.Services.AddScoped<SingpassConfigManager>();
+    builder.Services.AddScoped<SingpassAuthService>();
     builder.Services.AddSingleton<IFileStorage, DiskFileStorage>();
 
     // --- JWT Bearer authentication ---

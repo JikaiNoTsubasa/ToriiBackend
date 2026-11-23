@@ -1,10 +1,40 @@
 using Torii.Api.Dtos;
+using Torii.Api.Models;
 
 namespace Torii.Api.Services;
 
+/// <summary>
+/// Account to create PENDING. <see cref="PasswordHash"/> is unusable for SINGPASS accounts
+/// (they sign in with Singpass only).
+/// </summary>
+public sealed record AccountRequest(
+    string Email,
+    string DisplayName,
+    string? Position,
+    string PasswordHash,
+    AccountType AccountType,
+    string? SingpassSubject = null);
+
 public interface IAuthService
 {
-    Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken ct = default);
+    /// <summary>
+    /// Creates a PENDING (disabled) account and notifies the administrators; no session is issued.
+    /// </summary>
+    Task<RegistrationResponse> RegisterAsync(RegisterRequest request, CancellationToken ct = default);
+
+    /// <summary>Creates a PENDING account of any type and notifies the administrators (409 when taken).</summary>
+    Task<RegistrationResponse> RequestAccountAsync(AccountRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Issues a session for a user authenticated elsewhere (Singpass): 403 when pending or
+    /// declined, 401 when disabled.
+    /// </summary>
+    Task<AuthResponse> SignInAsync(User user, CancellationToken ct = default);
+
+    /// <summary>
+    /// Signs in. Valid credentials of a pending or declined account → 403
+    /// (<see cref="Exceptions.AccountNotActiveException"/>); anything else invalid → 401.
+    /// </summary>
     Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken ct = default);
     Task<AuthResponse> RefreshAsync(string refreshToken, CancellationToken ct = default);
     Task RevokeAsync(string refreshToken, CancellationToken ct = default);

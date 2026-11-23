@@ -12,9 +12,10 @@ public class AuthController(IAuthService auth) : ControllerBase
 {
     // Business errors bubble up as exceptions and are converted
     // into ProblemDetails responses by the GlobalExceptionHandler.
+    /// <summary>Account request: 202, the account waits for an administrator's approval.</summary>
     [HttpPost("register")]
-    public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request, CancellationToken ct)
-        => Ok(await auth.RegisterAsync(request, ct));
+    public async Task<ActionResult<RegistrationResponse>> Register(RegisterRequest request, CancellationToken ct)
+        => Accepted(await auth.RegisterAsync(request, ct));
 
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request, CancellationToken ct)

@@ -3,10 +3,15 @@ using Torii.Api.Models;
 
 namespace Torii.Api.Dtos;
 
+/// <summary>Account request; the account waits for an administrator's approval.</summary>
 public record RegisterRequest(
-    [Required, EmailAddress] string Email,
+    [Required, EmailAddress, MaxLength(256)] string Email,
     [Required, MinLength(8)] string Password,
-    [Required, MaxLength(128)] string DisplayName);
+    [Required, MaxLength(128)] string DisplayName,
+    [MaxLength(128)] string? Position = null);
+
+/// <summary>Returned after /register: no session, the account is PENDING until approved.</summary>
+public record RegistrationResponse(string Email, AccountStatus Status);
 
 public record LoginRequest(
     [Required, EmailAddress] string Email,
@@ -15,7 +20,7 @@ public record LoginRequest(
 public record RefreshRequest(
     [Required] string RefreshToken);
 
-/// <summary>Returned after login/register/refresh.</summary>
+/// <summary>Returned after login/refresh.</summary>
 public record AuthResponse(
     string AccessToken,
     string RefreshToken,

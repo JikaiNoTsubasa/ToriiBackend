@@ -9,9 +9,11 @@ namespace Torii.Api.Managers;
 
 /// <summary>
 /// In-app notifications: created when a message lands in a channel (reply or forward), for
-/// every member of the channel's customers but its author; listed / counted / marked read by
-/// their recipient. A notification is only shown while its channel is still visible to the
-/// recipient (same rule as the tickets), so a removed member stops seeing message previews.
+/// every member of the channel's customers but its author, and when someone requests an
+/// account, for every administrator; listed / counted / marked read by their recipient.
+/// A message notification is only shown while its channel is still visible to the recipient
+/// (same rule as the tickets), so a removed member stops seeing message previews; an account
+/// request only while it is still pending.
 /// </summary>
 public partial class NotificationManager(ToriiDbContext db) : ToriManager(db)
 {
@@ -19,13 +21,41 @@ public partial class NotificationManager(ToriiDbContext db) : ToriManager(db)
     public const int MaxTake = 50;
     private const int PreviewLength = 140;
 
-    /// <summary>The user's notifications whose channel the user can still see.</summary>
+    /// <summary>The user's notifications that are still relevant to them (see the class summary).</summary>
     private IQueryable<Notification> QueryFor(long userId) =>
         _dbContext.Notifications.Where(n =>
             n.UserId == userId &&
-            !n.TicketChannel.IsDeleted &&
-            n.TicketChannel.Participants.Any(p =>
-                !p.Customer.IsDeleted && p.Customer.Members.Any(u => u.Id == userId)));
+            ((n.Type == NotificationType.MESSAGE_POSTED &&
+              !n.TicketChannel!.IsDeleted &&
+              n.TicketChannel.Participants.Any(p =>
+                  !p.Customer.IsDeleted && p.Customer.Members.Any(u => u.Id == userId))) ||
+             (n.Type == NotificationType.ACCOUNT_REQUESTED &&
+              n.Actor.Status == AccountStatus.PENDING && !n.Actor.IsDeleted)));
+
+    /// <summary>Tells every active administrator that <paramref name="requesterId"/> requested an account.</summary>
+    public async Task NotifyAccountRequestAsync(long requesterId, CancellationToken ct = default)
+    {
+        var adminIds = await _dbContext.Users
+            .Where(u => u.Role == UserRole.ADMIN && u.IsActive && !u.IsDeleted)
+            .Select(u => u.Id)
+            .ToListAsync(ct);
+
+        var now = DateTime.UtcNow;
+        _dbContext.Notifications.AddRange(adminIds.Select(adminId => new Notification
+        {
+            UserId = adminId,
+            Type = NotificationType.ACCOUNT_REQUESTED,
+            ActorId = requesterId,
+            CreatedAt = now,
+        }));
+        await _dbContext.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Removes the notifications of an account request, once it is approved or declined.</summary>
+    public Task RemoveAccountRequestAsync(long requesterId, CancellationToken ct = default)
+        => _dbContext.Notifications
+            .Where(n => n.Type == NotificationType.ACCOUNT_REQUESTED && n.ActorId == requesterId)
+            .ExecuteDeleteAsync(ct);
 
     /// <summary>
     /// Notifies the message <paramref name="messageId"/>, just saved in <paramref name="channelId"/>
@@ -96,15 +126,21 @@ public partial class NotificationManager(ToriiDbContext db) : ToriManager(db)
                 n.Id,
                 n.Type,
                 n.TicketNumber,
-                n.Ticket.Title,
+                TicketTitle = n.Ticket == null ? null : n.Ticket.Title,
                 n.TicketChannelId,
-                Counterparts = n.TicketChannel.Participants
-                    .Where(p => !p.Customer.Members.Any(u => u.Id == userId))
-                    .Select(p => p.Customer.Name)
-                    .ToList(),
+                Counterparts = n.TicketChannel == null
+                    ? new List<string>()
+                    : n.TicketChannel.Participants
+                        .Where(p => !p.Customer.Members.Any(u => u.Id == userId))
+                        .Select(p => p.Customer.Name)
+                        .ToList(),
                 Actor = new UserRefDto(n.Actor.Id, n.Actor.DisplayName, n.Actor.AvatarUrl),
-                n.LastMessage.Content,
-                ForwardedContent = n.LastMessage.ForwardedFrom == null ? null : n.LastMessage.ForwardedFrom.Content,
+                ActorEmail = n.Actor.Email,
+                ActorAccountType = n.Actor.AccountType,
+                Content = n.LastMessage == null ? null : n.LastMessage.Content,
+                ForwardedContent = n.LastMessage == null || n.LastMessage.ForwardedFrom == null
+                    ? null
+                    : n.LastMessage.ForwardedFrom.Content,
                 n.Count,
                 n.CreatedAt,
                 n.ReadAt,
@@ -114,11 +150,13 @@ public partial class NotificationManager(ToriiDbContext db) : ToriManager(db)
         var items = rows
             .Select(n =>
             {
-                var preview = Excerpt(n.Content);
+                var preview = n.Type == NotificationType.ACCOUNT_REQUESTED
+                    ? n.ActorAccountType == AccountType.SINGPASS ? $"{n.ActorEmail} · Singpass account" : n.ActorEmail
+                    : Excerpt(n.Content ?? "");
                 if (preview.Length == 0 && n.ForwardedContent is not null)
                     preview = Excerpt(n.ForwardedContent);
                 return new NotificationDto(
-                    n.Id, n.Type, n.TicketNumber, n.Title, n.TicketChannelId,
+                    n.Id, n.Type, n.TicketNumber, n.TicketTitle, n.TicketChannelId,
                     string.Join(", ", n.Counterparts.Order()),
                     n.Actor, preview, n.ForwardedContent is not null, n.Count, n.CreatedAt, n.ReadAt);
             })

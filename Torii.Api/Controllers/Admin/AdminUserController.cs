@@ -12,12 +12,14 @@ public class AdminUserController(UserManager users) : ToriController
 {
     /// <summary>
     /// Users (email or name search). <c>activeOnly</c> hides disabled users;
+    /// <c>includeDeleted</c> adds the deleted accounts;
     /// <c>take</c> limits the results (default 100, max 500).
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<AdminUserDto>>> List(
-        [FromQuery] string? search, [FromQuery] bool activeOnly, [FromQuery] int? take, CancellationToken ct)
-        => Ok(await users.ListAsync(search, activeOnly, take, ct));
+        [FromQuery] string? search, [FromQuery] bool activeOnly, [FromQuery] int? take,
+        [FromQuery] bool includeDeleted, CancellationToken ct)
+        => Ok(await users.ListAsync(search, activeOnly, take, includeDeleted, ct));
 
     [HttpGet("{id:long}")]
     public async Task<ActionResult<AdminUserDto>> Get(long id, CancellationToken ct)

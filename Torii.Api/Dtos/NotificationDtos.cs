@@ -6,13 +6,15 @@ namespace Torii.Api.Dtos;
 /// In-app notification of the signed-in user. <see cref="Counterpart"/> = the other
 /// customer(s) of the channel; <see cref="Preview"/> = plain-text excerpt of the latest
 /// message (its comment, or the forwarded content); <see cref="Count"/> = messages covered.
+/// For ACCOUNT_REQUESTED: the ticket fields are null, <see cref="Actor"/> is the requester and
+/// <see cref="Preview"/> their email.
 /// </summary>
 public record NotificationDto(
     long Id,
     NotificationType Type,
-    string TicketNumber,
-    string TicketTitle,
-    long ChannelId,
+    string? TicketNumber,
+    string? TicketTitle,
+    long? ChannelId,
     string Counterpart,
     UserRefDto Actor,
     string Preview,

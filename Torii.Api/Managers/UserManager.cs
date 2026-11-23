@@ -10,7 +10,8 @@ namespace Torii.Api.Managers;
 /// User administration. Deletion is a soft delete. Safeguards: an admin cannot delete,
 /// disable or demote their own account, and the last active admin cannot lose that
 /// status. Disabling or deleting a user revokes their refresh tokens (sessions end when
-/// the current access token expires).
+/// the current access token expires). Pending account requests are not users yet: they are
+/// reviewed through <see cref="AccountRequestManager"/>. Enabling a declined account approves it.
 /// </summary>
 public class UserManager(ToriiDbContext db) : ToriManager(db)
 {
@@ -18,16 +19,21 @@ public class UserManager(ToriiDbContext db) : ToriManager(db)
     private const int MaxTake = 500;
     private const int MaxEmailLength = 256; // Users.Email column (ToriiDbContext)
 
-    private IQueryable<User> NotDeleted => _dbContext.Users.Where(u => !u.IsDeleted);
+    /// <summary>Users of the administration: not deleted, and not a pending account request.</summary>
+    private IQueryable<User> NotDeleted => Listed.Where(u => !u.IsDeleted);
+
+    /// <summary>Every user of the administration, deleted ones included (pending requests excluded).</summary>
+    private IQueryable<User> Listed => _dbContext.Users.Where(u => u.Status != AccountStatus.PENDING);
 
     /// <summary>
     /// Lists users by email or display name (case-insensitive), alphabetically.
-    /// <paramref name="activeOnly"/> hides disabled users (e.g. when picking members).
+    /// <paramref name="activeOnly"/> hides disabled users (e.g. when picking members);
+    /// <paramref name="includeDeleted"/> adds the deleted accounts (read-only, for audit).
     /// </summary>
     public async Task<IReadOnlyList<AdminUserDto>> ListAsync(
-        string? search, bool activeOnly, int? take, CancellationToken ct = default)
+        string? search, bool activeOnly, int? take, bool includeDeleted = false, CancellationToken ct = default)
     {
-        var query = NotDeleted.AsNoTracking();
+        var query = (includeDeleted ? Listed : NotDeleted).AsNoTracking();
 
         if (activeOnly)
             query = query.Where(u => u.IsActive);
@@ -43,8 +49,8 @@ public class UserManager(ToriiDbContext db) : ToriManager(db)
             .OrderBy(u => u.DisplayName)
             .Take(Math.Clamp(take ?? DefaultTake, 1, MaxTake))
             .Select(u => new AdminUserDto(
-                u.Id, u.Email, u.DisplayName, u.Position, u.AvatarUrl, u.Role, u.IsActive,
-                u.Customers.Count(c => !c.IsDeleted), u.CreatedAt, u.UpdatedAt))
+                u.Id, u.Email, u.DisplayName, u.Position, u.AvatarUrl, u.Role, u.IsActive, u.Status, u.AccountType,
+                u.Customers.Count(c => !c.IsDeleted), u.CreatedAt, u.UpdatedAt, u.IsDeleted, u.DeletedAt))
             .ToListAsync(ct);
     }
 
@@ -53,8 +59,8 @@ public class UserManager(ToriiDbContext db) : ToriManager(db)
                .AsNoTracking()
                .Where(u => u.Id == id)
                .Select(u => new AdminUserDto(
-                   u.Id, u.Email, u.DisplayName, u.Position, u.AvatarUrl, u.Role, u.IsActive,
-                   u.Customers.Count(c => !c.IsDeleted), u.CreatedAt, u.UpdatedAt))
+                   u.Id, u.Email, u.DisplayName, u.Position, u.AvatarUrl, u.Role, u.IsActive, u.Status, u.AccountType,
+                   u.Customers.Count(c => !c.IsDeleted), u.CreatedAt, u.UpdatedAt, u.IsDeleted, u.DeletedAt))
                .FirstOrDefaultAsync(ct)
            ?? throw NotFoundException.For("User", id);
 
@@ -101,6 +107,8 @@ public class UserManager(ToriiDbContext db) : ToriManager(db)
 
         var disabling = user.IsActive && !request.IsActive;
         user.IsActive = request.IsActive;
+        if (request.IsActive)
+            user.Status = AccountStatus.ACTIVE; // enabling a declined account approves it
         if (disabling)
             await RevokeSessionsAsync(user.Id, ct);
 
@@ -121,6 +129,7 @@ public class UserManager(ToriiDbContext db) : ToriManager(db)
 
         var now = DateTime.UtcNow;
         user.Email = DeletedEmail(user.Id, now, user.Email);
+        user.SingpassSubject = null; // the person can request a new Singpass account
         user.IsDeleted = true;
         user.IsActive = false;
         user.DeletedAt = now;

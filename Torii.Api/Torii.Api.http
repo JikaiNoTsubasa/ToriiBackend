@@ -1,6 +1,6 @@
 @ToriiApi_HostAddress = http://localhost:5080
 
-### Register — creates an account and returns the tokens
+### Register — requests an account (202, PENDING until an admin approves it; no tokens)
 # @name register
 POST {{ToriiApi_HostAddress}}/api/auth/register
 Content-Type: application/json
@@ -8,7 +8,8 @@ Content-Type: application/json
 {
   "email": "alice@torii.dev",
   "password": "password123",
-  "displayName": "Alice"
+  "displayName": "Alice",
+  "position": "Project manager"
 }
 
 ### Login
@@ -21,7 +22,7 @@ Content-Type: application/json
   "password": "password123"
 }
 
-### Me — requires an access token (taken from the login/register response)
+### Me — requires an access token (taken from the login response)
 GET {{ToriiApi_HostAddress}}/api/auth/me
 Authorization: Bearer {{login.response.body.accessToken}}
 
