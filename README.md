@@ -132,7 +132,7 @@ response can be cached for 30 days.
 
 | Method | Route                       | Description                                         | Auth       |
 |--------|-----------------------------|-----------------------------------------------------|------------|
-| GET    | `/api/tickets?search=&status=&page=&pageSize=` | One page of the visible tickets, newest first (see below) | **Bearer** |
+| GET    | `/api/tickets?search=&status=&type=&priority=&sort=&dir=&page=&pageSize=` | One page of the visible tickets, newest first by default (see below) | **Bearer** |
 | GET    | `/api/tickets/send-options` | User's customers that may send, with their targets  | **Bearer** |
 | POST   | `/api/tickets`              | Create `{ sourceCustomerId, targetCustomerId, title, content }` | **Bearer** |
 | PUT    | `/api/tickets/{number}/channels/{channelId}/status` | Change a channel's status `{ status }` (404 if not a participant) | **Bearer** |
@@ -153,6 +153,9 @@ title (case-insensitive `ILIKE`, wildcards escaped); `status` (repeatable,
 `?status=NEW&status=IN_PROGRESS`) keeps tickets where at least one of the user's channels has
 one of them; `type` / `priority` (repeatable too) keep tickets of one of them — an absent
 filter means "any"; `page` is 1-based, `pageSize` defaults to 25 (max 100).
+`sort` = `CREATED_AT` (default) | `NUMBER` | `TITLE` | `TYPE` | `PRIORITY` (by urgency, not
+alphabetically) | `CREATED_BY` (creator's name), `dir` = `DESC` (default) | `ASC`; ties are broken
+newest first so that paging stays stable.
 
 The list and the details only return the channels the user takes part in: the same ticket
 looks different depending on who reads it (e.g. a channel opened between Globex and a

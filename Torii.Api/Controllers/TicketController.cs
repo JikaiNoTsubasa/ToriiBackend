@@ -28,10 +28,13 @@ public class TicketController(TicketManager tickets) : ToriController
         [FromQuery(Name = "priority")] TicketPriority[]? priorities,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = TicketManager.DefaultPageSize,
+        [FromQuery] TicketSortField sort = TicketSortField.CREATED_AT,
+        [FromQuery] SortDirection dir = SortDirection.DESC,
         CancellationToken ct = default)
         => Ok(await tickets.ListVisibleAsync(
             CurrentUserId,
-            new TicketListQuery(search, NullIfEmpty(statuses), NullIfEmpty(types), NullIfEmpty(priorities), page, pageSize),
+            new TicketListQuery(
+                search, NullIfEmpty(statuses), NullIfEmpty(types), NullIfEmpty(priorities), page, pageSize, sort, dir),
             ct));
 
     /// <summary>Changes the type and priority of the ticket (participants only; 404 otherwise).</summary>

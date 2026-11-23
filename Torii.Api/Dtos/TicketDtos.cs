@@ -25,7 +25,25 @@ public record TicketListQuery(
     IReadOnlyCollection<TicketType>? Types,
     IReadOnlyCollection<TicketPriority>? Priorities,
     int Page,
-    int PageSize);
+    int PageSize,
+    TicketSortField Sort = TicketSortField.CREATED_AT,
+    SortDirection Direction = SortDirection.DESC);
+
+/// <summary>Sort column of the ticket list (ties: newest first).</summary>
+public enum TicketSortField
+{
+    CREATED_AT,
+    NUMBER,
+    TITLE,
+    /// <summary>Type, in label order (Bug, Feature request, Improvement…).</summary>
+    TYPE,
+    /// <summary>Priority by urgency: DESC = Critical first.</summary>
+    PRIORITY,
+    /// <summary>Creator's display name.</summary>
+    CREATED_BY,
+}
+
+public enum SortDirection { ASC, DESC }
 
 /// <summary>Type / priority change of a ticket (participants of any of its channels).</summary>
 public record UpdateTicketClassificationRequest([Required] TicketType? Type, [Required] TicketPriority? Priority);

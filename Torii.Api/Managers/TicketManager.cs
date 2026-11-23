@@ -76,9 +76,7 @@ public partial class TicketManager(
         var total = await tickets.CountAsync(ct);
         var items = total == 0
             ? []
-            : await tickets
-                .OrderByDescending(t => t.CreatedAt)
-                .ThenByDescending(t => t.Number)
+            : await Sort(tickets, query.Sort, query.Direction)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .Select(ToListItem(userId))
@@ -87,6 +85,38 @@ public partial class TicketManager(
 
         return new PagedResult<TicketListItemDto>(items, page, pageSize, total);
     }
+
+    /// <summary>
+    /// Orders the list by <paramref name="field"/>, ties broken newest first (then by number)
+    /// so that paging is stable.
+    /// </summary>
+    private static IOrderedQueryable<Ticket> Sort(IQueryable<Ticket> tickets, TicketSortField field, SortDirection direction)
+    {
+        var asc = direction == SortDirection.ASC;
+        IOrderedQueryable<Ticket> sorted = field switch
+        {
+            TicketSortField.NUMBER => asc ? tickets.OrderBy(t => t.Number) : tickets.OrderByDescending(t => t.Number),
+            TicketSortField.TITLE => asc ? tickets.OrderBy(t => t.Title) : tickets.OrderByDescending(t => t.Title),
+            // Stored as UPPERCASE names, whose alphabetical order matches the labels'.
+            TicketSortField.TYPE => asc ? tickets.OrderBy(t => t.Type) : tickets.OrderByDescending(t => t.Type),
+            // Stored as text: ranked by urgency (CASE) rather than alphabetically.
+            TicketSortField.PRIORITY => asc ? tickets.OrderBy(PriorityRank) : tickets.OrderByDescending(PriorityRank),
+            TicketSortField.CREATED_BY => asc
+                ? tickets.OrderBy(t => t.CreatedBy == null ? null : t.CreatedBy.DisplayName)
+                : tickets.OrderByDescending(t => t.CreatedBy == null ? null : t.CreatedBy.DisplayName),
+            _ => asc ? tickets.OrderBy(t => t.CreatedAt) : tickets.OrderByDescending(t => t.CreatedAt),
+        };
+        return field == TicketSortField.CREATED_AT
+            ? (asc ? sorted.ThenBy(t => t.Number) : sorted.ThenByDescending(t => t.Number))
+            : sorted.ThenByDescending(t => t.CreatedAt).ThenByDescending(t => t.Number);
+    }
+
+    /// <summary>Urgency rank of the priority: LOW = 0 … CRITICAL = 3.</summary>
+    private static readonly Expression<Func<Ticket, int>> PriorityRank = t =>
+        t.Priority == TicketPriority.CRITICAL ? 3
+        : t.Priority == TicketPriority.HIGH ? 2
+        : t.Priority == TicketPriority.MEDIUM ? 1
+        : 0;
 
     /// <summary>Escapes LIKE wildcards typed by the user.</summary>
     private static string EscapeLike(string value)
