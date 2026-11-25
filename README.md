@@ -52,7 +52,7 @@ Migrations live in `Torii.Api/Migrations` (`InitialCreate`, `AddUserRole`,
 `AddedAccountType`, `AddTicket`, `AddedCustomers`, `AddTicketChannels`, `AddedTicketTitle`,
 `AddTicketEdges`, `AddTicketMessages`, `ReleaseDeletedUserEmails`, `AddTicketCreator`,
 `AddChannelStatus`, `AddMessageForward`, `AddChannelFilesAndActivities`, `AddUserAvatar`,
-`AddTicketTypeAndPriority`, `AddAccountApproval`, `AddSingpass`):
+`AddTicketTypeAndPriority`, `AddAccountApproval`, `AddSingpass`, `AddInternalThreads`):
 
 ```bash
 cd Torii.Api
@@ -196,6 +196,13 @@ response can be cached for 30 days.
 - Visibility (`TicketManager.QueryVisibleTo`): a ticket is visible if the user is a member
   of a customer taking part in one of its channels (soft-deleted channels and customers
   excluded, no ADMIN exception). Reuse it for every ticket endpoint.
+- Internal threads: each customer taking part in a ticket can have a private thread on it
+  (`TicketChannel.IsInternal`, one participant: that customer), seen and notified to its
+  members only. `POST /api/tickets/{number}/internal/{customerId}/messages` posts in it and
+  creates it with its first message; the regular channel endpoints (reply, files, forward) then
+  work on it. It has no status, does not grant access to the ticket, and is left out of the
+  ticket list and the dashboard. Forwarding a message out of it to an exchange is allowed (an
+  explicit action, the UI warns).
 
 - Creation (`TicketManager.CreateAsync`): the user picks one of their customers as the
   source, a target allowed by an active ticket edge, a title and a content. In one

@@ -8,7 +8,8 @@ namespace Torii.Api.Managers;
 
 /// <summary>
 /// Ticket details and conversations: what a user sees of a ticket depends on their
-/// customers — only the channels one of them takes part in, with their messages.
+/// customers — only the channels one of them takes part in, with their messages, and the
+/// internal threads of their customers (seen by that customer's members only).
 /// </summary>
 public partial class TicketManager
 {
@@ -44,10 +45,11 @@ public partial class TicketManager
             .AsNoTracking()
             .Where(ch => ch.TicketNumber == number)
             .Where(VisibleChannel(userId))
-            .OrderBy(ch => ch.Id)
+            .OrderByDescending(ch => ch.IsInternal).ThenBy(ch => ch.Id)
             .Select(ch => new
             {
                 ch.Id,
+                ch.IsInternal,
                 ch.Status,
                 ch.StatusChangedAt,
                 Participants = ch.Participants
@@ -125,6 +127,11 @@ public partial class TicketManager
                 adders.GetValueOrDefault(f.CreatedById) ?? new UserRefDto(f.CreatedById, "Unknown user", ""),
                 f.CreatedAt, f.IsForwarded));
 
+        var ownCustomers = await OwnCustomersOfTicket(number, userId)
+            .OrderBy(c => c.Name)
+            .Select(c => new CustomerRefDto(c.Id, c.Name))
+            .ToListAsync(ct);
+
         return new TicketDetailDto(
             header.Number,
             header.Title,
@@ -135,13 +142,85 @@ public partial class TicketManager
             channels
                 .Select(ch => new TicketChannelDetailDto(
                     ch.Id,
+                    ch.IsInternal,
                     ch.Status,
                     ch.StatusChangedAt,
                     ch.Participants,
                     messagesByChannel[ch.Id].ToList(),
                     activitiesByChannel[ch.Id].ToList(),
                     filesByChannel[ch.Id].ToList()))
-                .ToList());
+                .ToList(),
+            ownCustomers);
+    }
+
+    /// <summary>
+    /// The user's (live) customers taking part in a live exchange channel of the ticket: the
+    /// customers that may have an internal thread on it.
+    /// </summary>
+    private IQueryable<Customer> OwnCustomersOfTicket(string number, long userId)
+        => _dbContext.Customers.Where(c =>
+            !c.IsDeleted &&
+            c.Members.Any(u => u.Id == userId) &&
+            _dbContext.ChannelParticipants.Any(p =>
+                p.CustomerId == c.Id &&
+                p.TicketChannel.TicketNumber == number &&
+                !p.TicketChannel.IsDeleted &&
+                !p.TicketChannel.IsInternal));
+
+    /// <summary>
+    /// Posts in the internal thread of <paramref name="customerId"/> on the ticket, creating the
+    /// thread with this first message when it does not exist yet. Only members of that customer
+    /// see it (and are notified). 404 when the customer takes no part in the ticket or the user
+    /// is not one of its members.
+    /// </summary>
+    public async Task<TicketMessageDto> PostInternalMessageAsync(
+        string number, long customerId, PostMessageRequest request, long userId, CancellationToken ct = default)
+    {
+        if (IsBlankHtml(request.Content))
+            throw new ValidationException(new Dictionary<string, string[]> { ["content"] = ["Content is required."] });
+
+        if (!await OwnCustomersOfTicket(number, userId).AnyAsync(c => c.Id == customerId, ct))
+            throw NotFoundException.For("Internal thread", $"{number}/{customerId}");
+
+        var now = DateTime.UtcNow;
+        var channel = await _dbContext.TicketChannels.FirstOrDefaultAsync(ch =>
+            ch.TicketNumber == number && ch.IsInternal && !ch.IsDeleted &&
+            ch.Participants.Any(p => p.CustomerId == customerId), ct);
+        if (channel is null)
+        {
+            channel = new TicketChannel
+            {
+                TicketNumber = number,
+                IsInternal = true,
+                CreatedAt = now,
+                CreatedById = userId,
+                UpdatedAt = null,
+                Participants = [new ChannelParticipant { CustomerId = customerId }],
+            };
+            _dbContext.TicketChannels.Add(channel);
+        }
+
+        var message = new TicketMessage
+        {
+            TicketChannel = channel,
+            AuthorId = userId,
+            Content = request.Content,
+            CreatedAt = now,
+            CreatedById = userId,
+            UpdatedAt = null,
+        };
+        _dbContext.TicketMessages.Add(message);
+        channel.UpdatedAt = now;
+        channel.UpdatedById = userId;
+        await _dbContext.SaveChangesAsync(ct);
+        // Recipients = members of the channel's customers: the colleagues only.
+        await notifications.NotifyMessageAsync(number, channel.Id, message.Id, userId, ct);
+
+        return await _dbContext.TicketMessages
+            .AsNoTracking()
+            .Where(m => m.Id == message.Id)
+            .Select(ToMessage(userId))
+            .FirstAsync(ct);
     }
 
     /// <summary>

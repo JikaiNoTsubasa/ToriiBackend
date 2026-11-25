@@ -57,7 +57,11 @@ public record TicketChannelDto(
     DateTime? StatusChangedAt,
     IReadOnlyList<ChannelParticipantDto> Participants);
 
-/// <summary>Ticket details as seen by the signed-in user (only the channels they take part in).</summary>
+/// <summary>
+/// Ticket details as seen by the signed-in user: the channels they take part in, internal
+/// threads first. <see cref="OwnCustomers"/> = the user's customers taking part in the ticket,
+/// each of which can have an internal thread (created by its first message).
+/// </summary>
 public record TicketDetailDto(
     string Number,
     string Title,
@@ -65,14 +69,17 @@ public record TicketDetailDto(
     TicketPriority Priority,
     UserRefDto? CreatedBy,
     DateTime CreatedAt,
-    IReadOnlyList<TicketChannelDetailDto> Channels);
+    IReadOnlyList<TicketChannelDetailDto> Channels,
+    IReadOnlyList<CustomerRefDto> OwnCustomers);
 
 /// <summary>
 /// Channel with its conversation: messages and activity events (both oldest first, merged by
-/// the client into one feed), and the files attached to it.
+/// the client into one feed), and the files attached to it. <see cref="IsInternal"/>: the
+/// internal thread of its single participant (no status).
 /// </summary>
 public record TicketChannelDetailDto(
     long Id,
+    bool IsInternal,
     TicketStatus Status,
     DateTime? StatusChangedAt,
     IReadOnlyList<ChannelParticipantDto> Participants,

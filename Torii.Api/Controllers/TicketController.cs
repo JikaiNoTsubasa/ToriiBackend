@@ -85,6 +85,15 @@ public class TicketController(TicketManager tickets) : ToriController
         => Ok(await tickets.PostMessageAsync(number, channelId, request, CurrentUserId, ct));
 
     /// <summary>
+    /// Posts in the internal thread of one of the user's customers on the ticket (created by its
+    /// first message); only that customer's members see it. 404 when the customer takes no part.
+    /// </summary>
+    [HttpPost("{number}/internal/{customerId:long}/messages")]
+    public async Task<ActionResult<TicketMessageDto>> PostInternalMessage(
+        string number, long customerId, PostMessageRequest request, CancellationToken ct)
+        => Ok(await tickets.PostInternalMessageAsync(number, customerId, request, CurrentUserId, ct));
+
+    /// <summary>
     /// Forwards a message to another channel of the ticket: an existing one
     /// (<c>targetChannelId</c>) or the channel between <c>sourceCustomerId</c> and
     /// <c>targetCustomerId</c>, created if needed (edge required).

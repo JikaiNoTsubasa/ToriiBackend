@@ -128,6 +128,7 @@ public partial class NotificationManager(ToriiDbContext db) : ToriManager(db)
                 n.TicketNumber,
                 TicketTitle = n.Ticket == null ? null : n.Ticket.Title,
                 n.TicketChannelId,
+                IsInternal = n.TicketChannel != null && n.TicketChannel.IsInternal,
                 Counterparts = n.TicketChannel == null
                     ? new List<string>()
                     : n.TicketChannel.Participants
@@ -158,7 +159,7 @@ public partial class NotificationManager(ToriiDbContext db) : ToriManager(db)
                 return new NotificationDto(
                     n.Id, n.Type, n.TicketNumber, n.TicketTitle, n.TicketChannelId,
                     string.Join(", ", n.Counterparts.Order()),
-                    n.Actor, preview, n.ForwardedContent is not null, n.Count, n.CreatedAt, n.ReadAt);
+                    n.Actor, preview, n.ForwardedContent is not null, n.IsInternal, n.Count, n.CreatedAt, n.ReadAt);
             })
             .ToList();
 

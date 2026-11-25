@@ -7,7 +7,8 @@ namespace Torii.Api.Dtos;
 /// customer(s) of the channel; <see cref="Preview"/> = plain-text excerpt of the latest
 /// message (its comment, or the forwarded content); <see cref="Count"/> = messages covered.
 /// For ACCOUNT_REQUESTED: the ticket fields are null, <see cref="Actor"/> is the requester and
-/// <see cref="Preview"/> their email.
+/// <see cref="Preview"/> their email. <see cref="IsInternal"/>: posted in the internal thread of
+/// the recipient's customer (no counterpart).
 /// </summary>
 public record NotificationDto(
     long Id,
@@ -19,6 +20,7 @@ public record NotificationDto(
     UserRefDto Actor,
     string Preview,
     bool IsForward,
+    bool IsInternal,
     int Count,
     DateTime CreatedAt,
     DateTime? ReadAt);

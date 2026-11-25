@@ -16,7 +16,8 @@ public partial class TicketManager
     public async Task<DashboardDto> GetDashboardAsync(long userId, CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
-        var visibleChannels = _dbContext.TicketChannels.Where(VisibleChannel(userId));
+        // Exchanges only: internal threads have no status and nobody to wait for.
+        var visibleChannels = _dbContext.TicketChannels.Where(VisibleChannel(userId)).Where(ch => !ch.IsInternal);
 
         // Open channels with their latest message: drives the open / awaiting KPIs, the
         // "needs attention" list and the priority breakdown (one row per channel, small).

@@ -22,11 +22,11 @@ public partial class TicketManager(
     /// Visibility rule, to reuse for every ticket access (list, details,
     /// update…): a ticket is visible if the user is a member of a customer
     /// taking part in one of its channels. Deleted (soft delete) channels and
-    /// customers do not grant access. No exception for ADMIN.
+    /// customers do not grant access, nor do internal threads. No exception for ADMIN.
     /// </summary>
     public IQueryable<Ticket> QueryVisibleTo(long userId) =>
         _dbContext.Tickets.Where(t => t.Channels!.Any(ch =>
-            !ch.IsDeleted &&
+            !ch.IsDeleted && !ch.IsInternal &&
             ch.Participants.Any(p =>
                 !p.Customer.IsDeleted &&
                 p.Customer.Members.Any(u => u.Id == userId))));
@@ -57,7 +57,7 @@ public partial class TicketManager(
             // Only the channels the user takes part in count (the ones they see).
             var wanted = statuses.Distinct().ToList();
             tickets = tickets.Where(t => t.Channels!.Any(ch =>
-                !ch.IsDeleted && wanted.Contains(ch.Status) &&
+                !ch.IsDeleted && !ch.IsInternal && wanted.Contains(ch.Status) &&
                 ch.Participants.Any(p => !p.Customer.IsDeleted && p.Customer.Members.Any(u => u.Id == userId))));
         }
 
@@ -200,8 +200,9 @@ public partial class TicketManager(
     public async Task<TicketListItemDto> UpdateChannelStatusAsync(
         string number, long channelId, TicketStatus status, long userId, CancellationToken ct = default)
     {
+        // Internal threads have no status: reported as not found like any channel the user cannot change.
         var channel = await _dbContext.TicketChannels.FirstOrDefaultAsync(ch =>
-                          ch.Id == channelId && ch.TicketNumber == number && !ch.IsDeleted &&
+                          ch.Id == channelId && ch.TicketNumber == number && !ch.IsDeleted && !ch.IsInternal &&
                           ch.Participants.Any(p =>
                               !p.Customer.IsDeleted && p.Customer.Members.Any(u => u.Id == userId)), ct)
                       ?? throw NotFoundException.For("Ticket channel", $"{number}/{channelId}");
@@ -296,8 +297,8 @@ public partial class TicketManager(
 
     /// <summary>
     /// List projection for <paramref name="userId"/>: only the channels the user takes part in
-    /// (each with its own status), and each participant tells whether it is one of the user's
-    /// own customers (<c>IsOwn</c>), so the UI can show the counterpart.
+    /// (each with its own status; internal threads left out), and each participant tells
+    /// whether it is one of the user's own customers (<c>IsOwn</c>), so the UI can show the counterpart.
     /// </summary>
     private static Expression<Func<Ticket, TicketListItemDto>> ToListItem(long userId) => t => new TicketListItemDto(
         t.Number,
@@ -307,7 +308,7 @@ public partial class TicketManager(
         t.CreatedBy == null ? null : new UserRefDto(t.CreatedBy.Id, t.CreatedBy.DisplayName, t.CreatedBy.AvatarUrl),
         t.CreatedAt,
         t.Channels!
-            .Where(ch => !ch.IsDeleted && ch.Participants.Any(p =>
+            .Where(ch => !ch.IsDeleted && !ch.IsInternal && ch.Participants.Any(p =>
                 !p.Customer.IsDeleted && p.Customer.Members.Any(u => u.Id == userId)))
             .OrderBy(ch => ch.Id)
             .Select(ch => new TicketChannelDto(
